@@ -5,12 +5,9 @@
 import React, { useState, useEffect, ChangeEvent } from 'react'
 import { User } from 'firebase/auth'
 import {
-  getAuth,
   onAuthStateChanged,
   signOut,
-  updateProfile,
-  // updateEmail,
-  // updatePassword,
+  updateProfile
 } from 'firebase/auth'
 import {
   User as UserIcon, PictureInPicture

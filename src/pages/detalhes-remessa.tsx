@@ -282,28 +282,30 @@ const DetalhesRemessa: React.FC = () => {
             valor: cheque.valor,
           }),
         });
-
         // Atualizar o estado local da remessa
         setRemessa((prev) => {
           if (prev) {
             return {
               ...prev,
-              cheques: [
-                ...prev.cheques,
-                {
-                  id: newChequeId,
-                  numeroCheque: cheque.numeroCheque,
-                  banco: cheque.banco,
-                  vencimento: cheque.vencimento,
-                  nome: cheque.nome,
-                  valor: cheque.valor,
-                },
-              ],
+              cheques: prev.cheques.concat({
+                id: newChequeId,
+                numeroCheque: cheque.numeroCheque,
+                banco: cheque.banco,
+                vencimento: cheque.vencimento,
+                nome: cheque.nome,
+                valor: cheque.valor,
+                leitora: cheque.leitora,
+                cpf: cheque.cpf,
+                quemRetirou: cheque.quemRetirou,
+                dataRetirada: cheque.dataRetirada,
+                local: 'Remessa ' + remessa.protocolo,
+              }),
             };
           } else {
             return prev;
           }
         });
+               
       }
 
       // Limpar a lista de cheques adicionados

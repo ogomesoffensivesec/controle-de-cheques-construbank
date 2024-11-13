@@ -16,6 +16,9 @@ import { Cheque } from '@/interfaces/cheque';
 import { v4 } from 'uuid';
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from '@/components/ui/breadcrumb';
 import { useAuth } from '@/contexts/auth-context';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { classificacoes } from '@/data/cheques';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 
 const NovoCheque: React.FC = () => {
@@ -356,13 +359,35 @@ const NovoCheque: React.FC = () => {
           {/* Campo Motivo da Devolução */}
           <div className="space-y-1">
             <Label htmlFor="motivoDevolucao">Motivo da Devolução</Label>
-            <Input
-              type="text"
-              id="motivoDevolucao"
-              value={chequeAtual.motivoDevolucao}
-              onChange={(e) => handleChange('motivoDevolucao', e.target.value)}
-              placeholder="Motivo da Devolução"
-            />
+            <Select onValueChange={(value) => handleChange('motivoDevolucao', value)}>
+              <SelectTrigger >
+                <SelectValue placeholder="Motivo da devolução" />
+              </SelectTrigger>
+              <SelectContent>
+                {
+                  classificacoes.map((cls =>
+                    <SelectItem key={cls.classificacao} value={`${cls.classificacao} - ${cls.motivo}`}>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            {cls.classificacao} -  {cls.motivo}
+                          </TooltipTrigger>
+                          {
+                            cls.descricao && <TooltipContent>
+                              {cls.descricao}
+                            </TooltipContent>
+                          }
+                        </Tooltip>
+                      </TooltipProvider>
+
+
+                    </SelectItem>
+                  ))
+                }
+
+              </SelectContent>
+            </Select>
+
           </div>
           {/* Campo Número da Operação */}
           <div className="space-y-1">
@@ -449,8 +474,8 @@ const NovoCheque: React.FC = () => {
             {isSubmitting ? 'Cadastrando Cheques...' : 'Cadastrar cheques'}
           </Button>
         </div>
-      </form>
-    </div>
+      </form >
+    </div >
   );
 };
 
