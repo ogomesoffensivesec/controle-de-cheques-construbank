@@ -10,7 +10,6 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import ReactInputMask from 'react-input-mask';
 import { Trash, Edit2 } from 'lucide-react';
 import { Cheque } from '@/interfaces/cheque';
 import { v4 } from 'uuid';
@@ -326,22 +325,22 @@ const NovoCheque: React.FC = () => {
               type="text"
               id="nome"
               value={chequeAtual.nome}
-              onChange={(e) => handleChange('nome', e.target.value)}
+              onChange={(e) => {
+                e.target.value = e.target.value.toUpperCase();
+                handleChange('nome', e.target.value)
+              }}
               placeholder="Nome"
             />
           </div>
           {/* Campo CPF */}
           <div className="space-y-1">
-            <Label htmlFor="cpf">CPF *</Label>
-            <ReactInputMask
+            <Label htmlFor="cpf">CPF/CNPJ *</Label>
+            <Input
               type="text"
               id="cpf"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              mask="999.999.999-99"
               value={chequeAtual.cpf}
               onChange={(e) => handleChange('cpf', e.target.value)}
-              placeholder="CPF"
-
+              placeholder="CPF/CNPJ"
             />
           </div>
           {/* Campo Valor */}

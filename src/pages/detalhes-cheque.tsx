@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import ReactInputMask from 'react-input-mask';
 import { Eye, Trash } from 'lucide-react';
 import { Cheque } from '@/interfaces/cheque';
 import { Card, CardContent } from '@/components/ui/card';
@@ -254,16 +253,13 @@ const DetalhesCheque: React.FC = () => {
                     </div>
                     {/* Campo CPF */}
                     <div >
-                      <Label htmlFor="cpf">CPF *</Label>
-                      <ReactInputMask
+                      <Label htmlFor="cpf">CPF/CNPJ *</Label>
+                      <Input
                         type="text"
                         id="cpf"
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                        mask="999.999.999-99"
                         value={cheque.cpf}
                         onChange={(e) => handleChange('cpf', e.target.value)}
-                        placeholder="CPF"
-                        required
+                        placeholder="CPF/CNPJ"
                       />
                     </div>
                     {/* Campo Valor */}

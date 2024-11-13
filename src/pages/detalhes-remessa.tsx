@@ -31,7 +31,6 @@ import {
 import { useAuth } from '@/contexts/auth-context';
 import { Cheque } from '@/interfaces/cheque';
 import { v4 } from 'uuid';
-import ReactInputMask from 'react-input-mask';
 import { Trash, Edit2, Plus } from 'lucide-react';
 
 const DetalhesRemessa: React.FC = () => {
@@ -305,7 +304,7 @@ const DetalhesRemessa: React.FC = () => {
             return prev;
           }
         });
-               
+
       }
 
       // Limpar a lista de cheques adicionados
@@ -341,11 +340,11 @@ const DetalhesRemessa: React.FC = () => {
               <strong>Data da Remessa:</strong>{' '}
               {remessa.dataRemessa
                 ? format(
-                    typeof remessa.dataRemessa === 'string'
-                      ? parseISO(remessa.dataRemessa)
-                      : remessa.dataRemessa,
-                    'dd/MM/yyyy'
-                  )
+                  typeof remessa.dataRemessa === 'string'
+                    ? parseISO(remessa.dataRemessa)
+                    : remessa.dataRemessa,
+                  'dd/MM/yyyy'
+                )
                 : 'Data não disponível'}
             </p>
             <p>
@@ -443,15 +442,13 @@ const DetalhesRemessa: React.FC = () => {
                         </div>
                         {/* Campo CPF */}
                         <div className="space-y-1">
-                          <Label htmlFor="cpf">CPF *</Label>
-                          <ReactInputMask
+                          <Label htmlFor="cpf">CPF/CNPJ *</Label>
+                          <Input
                             type="text"
                             id="cpf"
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                            mask="999.999.999-99"
                             value={chequeAtual.cpf}
                             onChange={(e) => handleChange('cpf', e.target.value)}
-                            placeholder="CPF"
+                            placeholder="CPF/CNPJ"
                           />
                         </div>
                         {/* Campo Valor */}

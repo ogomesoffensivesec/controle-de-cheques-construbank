@@ -57,7 +57,6 @@ import {
 } from "@/components/ui/table"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import ReactInputMask from "react-input-mask"
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 
 // Importando o Dialog
@@ -517,15 +516,12 @@ const EstornosBancarios: React.FC = () => {
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor="cpf">CPF</Label>
-                        <ReactInputMask
+                        <Input
                           type="text"
                           id="cpf"
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                          mask="999.999.999-99"
                           value={novoCheque.cpf}
                           onChange={(e) => setNovoCheque({ ...novoCheque, cpf: e.target.value })}
-                          placeholder="CPF"
-                          required
+                          placeholder="CPF/CNPJ"
                         />
                       </div>
                       <div className="space-y-1">
