@@ -9,16 +9,11 @@ import {
   onAuthStateChanged,
   signOut,
   updateProfile,
-  updateEmail,
-  updatePassword,
+  // updateEmail,
+  // updatePassword,
 } from 'firebase/auth'
 import {
-  Moon,
-  Sun,
-  User as UserIcon,
-  Camera,
-  Mail,
-  Lock,
+  User as UserIcon, PictureInPicture
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,36 +24,24 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { storage } from '@/db/firebase' // Assegure-se de exportar 'storage' do seu arquivo de configuração Firebase
+import { auth, storage } from '@/db/firebase'; // Assegure-se de exportar 'storage' do seu arquivo de configuração Firebase
+// import { useAuth } from '@/contexts/auth-context'
 
 const TelaConfiguracoes: React.FC = () => {
-  const auth = getAuth()
   const [user, setUser] = useState<User | null>(null)
-  const [modoEscuro, setModoEscuro] = useState<boolean>(false)
-  const [novoEmail, setNovoEmail] = useState<string>('')
-  const [novaSenha, setNovaSenha] = useState<string>('')
-  const [foto, setFoto] = useState<File | null>(null)
-  const [isUpdatingEmail, setIsUpdatingEmail] = useState<boolean>(false)
-  const [isUpdatingSenha, setIsUpdatingSenha] = useState<boolean>(false)
+  // const [novoEmail, setNovoEmail] = useState<string>('')
+  // const [novaSenha, setNovaSenha] = useState<string>('')
+  // const [isUpdatingEmail, setIsUpdatingEmail] = useState<boolean>(false)
+  // const [isUpdatingSenha, setIsUpdatingSenha] = useState<boolean>(false)
   const [isUpdatingFoto, setIsUpdatingFoto] = useState<boolean>(false)
   const [isSigningOut, setIsSigningOut] = useState<boolean>(false)
+  // const { currentUser } = useAuth()
 
-  // Carregar preferência de tema do localStorage
-  useEffect(() => {
-    const tema = localStorage.getItem('modoEscuro')
-    if (tema === 'true') {
-      setModoEscuro(true)
-      document.documentElement.classList.add('dark')
-    } else {
-      setModoEscuro(false)
-      document.documentElement.classList.remove('dark')
-    }
-  }, [])
+
 
   // Listener de autenticação
   useEffect(() => {
@@ -70,22 +53,12 @@ const TelaConfiguracoes: React.FC = () => {
   }, [auth])
 
   // Função para alternar o modo escuro
-  const toggleModoEscuro = () => {
-    const novoModo = !modoEscuro
-    setModoEscuro(novoModo)
-    if (novoModo) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-    localStorage.setItem('modoEscuro', String(novoModo))
-  }
+
 
   // Função para atualizar a foto de perfil
   const atualizarFoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file && user) {
-      setFoto(file)
       setIsUpdatingFoto(true)
       try {
         const storageRef = ref(storage, `usuarios/${user.uid}/perfil/${file.name}`)
@@ -102,43 +75,43 @@ const TelaConfiguracoes: React.FC = () => {
     }
   }
 
-  // Função para atualizar o e-mail
-  const atualizarEmailUsuario = async () => {
-    if (user && novoEmail) {
-      setIsUpdatingEmail(true)
-      try {
-        await updateEmail(user, novoEmail)
-        toast.success('E-mail atualizado com sucesso!')
-        setNovoEmail('')
-      } catch (error: any) {
-        console.error('Erro ao atualizar o e-mail:', error)
-        toast.error(error.message || 'Erro ao atualizar o e-mail.')
-      } finally {
-        setIsUpdatingEmail(false)
-      }
-    } else {
-      toast.error('Por favor, insira um novo e-mail válido.')
-    }
-  }
+  // // Função para atualizar o e-mail
+  // const atualizarEmailUsuario = async () => {
+  //   if (user && novoEmail) {
+  //     setIsUpdatingEmail(true)
+  //     try {
+  //       await updateEmail(user, novoEmail)
+  //       toast.success('E-mail atualizado com sucesso!')
+  //       setNovoEmail('')
+  //     } catch (error: any) {
+  //       console.error('Erro ao atualizar o e-mail:', error)
+  //       toast.error(error.message || 'Erro ao atualizar o e-mail.')
+  //     } finally {
+  //       setIsUpdatingEmail(false)
+  //     }
+  //   } else {
+  //     toast.error('Por favor, insira um novo e-mail válido.')
+  //   }
+  // }
 
   // Função para atualizar a senha
-  const atualizarSenhaUsuario = async () => {
-    if (user && novaSenha) {
-      setIsUpdatingSenha(true)
-      try {
-        await updatePassword(user, novaSenha)
-        toast.success('Senha atualizada com sucesso!')
-        setNovaSenha('')
-      } catch (error: any) {
-        console.error('Erro ao atualizar a senha:', error)
-        toast.error(error.message || 'Erro ao atualizar a senha.')
-      } finally {
-        setIsUpdatingSenha(false)
-      }
-    } else {
-      toast.error('Por favor, insira uma nova senha válida.')
-    }
-  }
+  // const atualizarSenhaUsuario = async () => {
+  //   if (user && novaSenha) {
+  //     setIsUpdatingSenha(true)
+  //     try {
+  //       await updatePassword(user, novaSenha)
+  //       toast.success('Senha atualizada com sucesso!')
+  //       setNovaSenha('')
+  //     } catch (error: any) {
+  //       console.error('Erro ao atualizar a senha:', error)
+  //       toast.error(error.message || 'Erro ao atualizar a senha.')
+  //     } finally {
+  //       setIsUpdatingSenha(false)
+  //     }
+  //   } else {
+  //     toast.error('Por favor, insira uma nova senha válida.')
+  //   }
+  // }
 
   // Função para sair da conta
   const handleSignOut = async () => {
@@ -155,9 +128,9 @@ const TelaConfiguracoes: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen flex items-center ${modoEscuro ? 'dark' : ''} bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 transition-colors duration-300`}>
+    <div className={`min-h-screen flex items-center `}>
       <div className="container mx-auto px-4 py-8">
-        <Card className="w-full max-w-2xl mx-auto bg-zinc-50 dark:bg-zinc-800 shadow-lg rounded-lg">
+        <Card className="w-full max-w-2xl mx-auto shadow-lg rounded-lg">
           <CardHeader className="flex flex-col items-center">
             <CardTitle className="text-2xl font-bold">Configurações da Conta</CardTitle>
             <CardDescription className="text-center">Gerencie suas informações e preferências</CardDescription>
@@ -170,16 +143,16 @@ const TelaConfiguracoes: React.FC = () => {
                   <img
                     src={user.photoURL}
                     alt="Foto de perfil"
-                    className="w-24 h-24 rounded-full object-cover"
+                    className="w-24 h-24 rounded-full object-cover cursor-pointer "
                   />
                 ) : (
                   <UserIcon className="w-24 h-24 text-zinc-500" />
                 )}
                 <Label
                   htmlFor="foto-upload"
-                  className="absolute bottom-0 right-0 bg-zinc-200 dark:bg-zinc-600 rounded-full p-2 cursor-pointer hover:bg-zinc-300 dark:hover:bg-zinc-500 transition-colors duration-200"
+                  className="absolute bottom-0 right-0  transition-colors duration-200 cursor-pointer"
                 >
-                  <Camera className="w-4 h-4 text-zinc-700 dark:text-zinc-200" />
+                  <PictureInPicture className="w-6 h-6 text-white bg-zinc-900/50 p-1 rounded-full " />
                   <Input
                     id="foto-upload"
                     type="file"
@@ -189,7 +162,7 @@ const TelaConfiguracoes: React.FC = () => {
                   />
                 </Label>
                 {isUpdatingFoto && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full">
+                  <div className="absolute inset-0 flex items-center justify-center bg-opacity-50 rounded-full">
                     <svg
                       className="animate-spin h-6 w-6 text-white"
                       xmlns="http://www.w3.org/2000/svg"
@@ -219,20 +192,19 @@ const TelaConfiguracoes: React.FC = () => {
               </div>
             </div>
 
-            {/* Atualização de E-mail */}
-            <div>
-              <Label htmlFor="new-email" className="flex items-center space-x-2 mb-1">
-                <Mail className="w-4 h-4" />
-                <span>Novo E-mail</span>
+            {/* Atualização de E-mail 
+            <div className='space-y-1'>
+              <Label htmlFor="new-email" >
+                <span>E-mail</span>
               </Label>
               <div className="flex space-x-2">
                 <Input
                   id="new-email"
                   type="email"
                   value={novoEmail}
+                  defaultValue={currentUser?.email as string}
                   onChange={(e) => setNovoEmail(e.target.value)}
                   placeholder="novo@email.com"
-                  className="flex-1"
                 />
                 <Button
                   onClick={atualizarEmailUsuario}
@@ -266,12 +238,11 @@ const TelaConfiguracoes: React.FC = () => {
                 </Button>
               </div>
             </div>
-
-            {/* Atualização de Senha */}
-            <div>
-              <Label htmlFor="new-password" className="flex items-center space-x-2 mb-1">
-                <Lock className="w-4 h-4" />
-                <span>Nova Senha</span>
+*/}
+            {/* Atualização de Senha 
+            <div className='space-y-1'>
+              <Label htmlFor="new-password" >
+                <span>Senha</span>
               </Label>
               <div className="flex space-x-2">
                 <Input
@@ -280,7 +251,6 @@ const TelaConfiguracoes: React.FC = () => {
                   value={novaSenha}
                   onChange={(e) => setNovaSenha(e.target.value)}
                   placeholder="Digite a nova senha"
-                  className="flex-1"
                 />
                 <Button
                   onClick={atualizarSenhaUsuario}
@@ -314,63 +284,43 @@ const TelaConfiguracoes: React.FC = () => {
                 </Button>
               </div>
             </div>
-
-            {/* Modo Escuro */}
-            <div className="flex items-center justify-between">
-              <Label htmlFor="dark-mode" className="flex items-center space-x-2">
-                {modoEscuro ? (
-                  <Moon className="w-5 h-5" />
+            */}
+            <div className='w-full flex justify-center items-center'>
+              <Button
+                variant="destructive"
+                className="flex items-center justify-center space-x-2 w-[170px]"
+                onClick={handleSignOut}
+                disabled={isSigningOut}
+              >
+                {isSigningOut ? (
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    ></path>
+                  </svg>
                 ) : (
-                  <Sun className="w-5 h-5" />
+                  <UserIcon className="w-5 h-5" />
                 )}
-                <span>Mudar para {modoEscuro ? 'Modo Claro' : 'Modo Escuro'}</span>
-              </Label>
-              <Switch
-                id="dark-mode"
-                checked={modoEscuro}
-                onCheckedChange={toggleModoEscuro}
-              />
+                <span>Sair da Conta</span>
+              </Button>
             </div>
           </CardContent>
-          <CardHeader className="px-6">
-            <CardDescription className="text-center">
-              Gerencie suas preferências e mantenha sua conta segura
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="destructive"
-              className="w-full flex items-center justify-center space-x-2"
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-            >
-              {isSigningOut ? (
-                <svg
-                  className="animate-spin h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8H4z"
-                  ></path>
-                </svg>
-              ) : (
-                <UserIcon className="w-5 h-5" />
-              )}
-              <span>Sair da Conta</span>
-            </Button>
-          </CardContent>
+
         </Card>
       </div>
     </div>

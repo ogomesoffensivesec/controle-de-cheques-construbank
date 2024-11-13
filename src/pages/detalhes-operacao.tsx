@@ -15,10 +15,12 @@ import {
   doc,
   getDoc,
   collection,
-  getDocs, deleteDoc,
-  Timestamp
+  getDocs,
+  deleteDoc,
+  addDoc,
+  Timestamp,
 } from "firebase/firestore"
-import { db } from "@/db/firebase"
+import { storage, db } from "@/db/firebase"
 import {
   ColumnDef,
   flexRender,
@@ -36,13 +38,15 @@ import { ArrowUpDown, MoreHorizontal, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
-  DropdownMenu, DropdownMenuContent,
+  DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Table,
   TableBody,
@@ -53,11 +57,17 @@ import {
 } from "@/components/ui/table"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
+import ReactInputMask from "react-input-mask"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
 
-
-
-
-// Importações para geração de PDF
+// Importando o Dialog
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 // Definição da interface para um cheque
 export interface Cheque {
@@ -73,6 +83,7 @@ export interface Cheque {
   status: string
   assinaturaEntrega: string
   assinaturaRecebimento: string
+  anexoFile?: File | null // Adicionado para manipular o upload do arquivo
 }
 
 // Definição da interface para uma operação
@@ -84,7 +95,7 @@ interface Operacao {
   createdAt: Date
 }
 
-const DetalhesOperacao: React.FC = () => {
+const EstornosBancarios: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
@@ -92,15 +103,39 @@ const DetalhesOperacao: React.FC = () => {
   const [cheques, setCheques] = useState<Cheque[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(true)
 
+  // Estados para adicionar cheque
+  const [novoCheque, setNovoCheque] = useState<Cheque>({
+    id: "",
+    leitora: "",
+    numeroCheque: "",
+    nome: "",
+    cpf: "",
+    valor: 0,
+    motivoDevolucao: "",
+    numeroOperacao: "",
+    anexoUrl: "",
+    status: "Escritório",
+    assinaturaEntrega: "",
+    assinaturaRecebimento: "",
+    anexoFile: null,
+  })
+
+  // Estado de submissão do formulário
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
+
+  // Estado de remoção de cheque
+  const [removingChequeId, setRemovingChequeId] = useState<string | null>(null)
+
   // Declaração das funções de atualização de estado para o DataTable
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
 
-  // Fetch Operation and Cheques
+  // Fetch Operação e Cheques
   useEffect(() => {
     const fetchOperacao = async () => {
+      setIsLoading(true)
       try {
         if (!id) {
           toast.error("ID da operação não fornecido.")
@@ -113,11 +148,9 @@ const DetalhesOperacao: React.FC = () => {
         if (operacaoSnap.exists()) {
           const data = operacaoSnap.data()
 
-          // Verificar se dataRetirada e createdAt são Timestamps
           const dataRetirada = data.dataRetirada
           const createdAt = data.createdAt
 
-          // Converter para Date se forem Timestamps
           const operacaoData: Operacao = {
             id: operacaoSnap.id,
             dataRetirada:
@@ -134,7 +167,6 @@ const DetalhesOperacao: React.FC = () => {
 
           setOperacao(operacaoData)
 
-          // Buscar cheques
           const chequesRef = collection(db, "estornos", id, "cheques")
           const chequesSnap = await getDocs(chequesRef)
           const chequesData = chequesSnap.docs.map(doc => ({
@@ -283,9 +315,9 @@ const DetalhesOperacao: React.FC = () => {
                   Copiar ID do Cheque
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Editar Cheque</DropdownMenuItem>
+                {/* <DropdownMenuItem>Editar Cheque</DropdownMenuItem> */}
                 <DropdownMenuItem onClick={() => handleRemoverCheque(cheque.id)}>
-                  Remover Cheque
+                  {removingChequeId === cheque.id ? "Removendo..." : "Remover Cheque"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -293,7 +325,7 @@ const DetalhesOperacao: React.FC = () => {
         },
       },
     ],
-    [] // Dependências vazias pois não há dependências externas
+    [removingChequeId]
   )
 
   // Configuração do DataTable
@@ -322,6 +354,8 @@ const DetalhesOperacao: React.FC = () => {
     if (!id) return
     if (!window.confirm("Tem certeza de que deseja remover este cheque?")) return
 
+    setRemovingChequeId(chequeId)
+
     try {
       const chequeRef = doc(db, "estornos", id, "cheques", chequeId)
       await deleteDoc(chequeRef)
@@ -330,9 +364,71 @@ const DetalhesOperacao: React.FC = () => {
     } catch (error) {
       console.error("Erro ao remover cheque:", error)
       toast.error("Ocorreu um erro ao remover o cheque.")
+    } finally {
+      setRemovingChequeId(null)
     }
   }
 
+  // Função para adicionar um novo cheque
+  const handleAddCheque = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!id) return
+
+    setIsSubmitting(true)
+
+    try {
+      // Referência para a coleção de cheques
+      const chequesCollectionRef = collection(db, "estornos", id, "cheques")
+
+      // Upload do anexo, se houver
+      let anexoUrl = ""
+      if (novoCheque.anexoFile) {
+        const storageRefPath = ref(storage, `estornos/${id}/anexos/${novoCheque.anexoFile.name}`)
+        const snapshot = await uploadBytes(storageRefPath, novoCheque.anexoFile)
+        anexoUrl = await getDownloadURL(snapshot.ref)
+      }
+
+      // Remover anexoFile de novoCheque
+      const { anexoFile, ...chequeData } = novoCheque
+
+      // Adicionar o cheque ao Firestore
+      const chequeDocRef = await addDoc(chequesCollectionRef, {
+        ...chequeData,
+        anexoUrl,
+        createdAt: Timestamp.now(),
+      })
+
+      // Atualizar o estado local
+      setCheques((prevCheques) => [
+        ...prevCheques,
+        { ...chequeData, id: chequeDocRef.id, anexoUrl },
+      ])
+
+      // Limpar o formulário
+      setNovoCheque({
+        id: "",
+        leitora: "",
+        numeroCheque: "",
+        nome: "",
+        cpf: "",
+        valor: 0,
+        motivoDevolucao: "",
+        numeroOperacao: "",
+        anexoUrl: "",
+        status: "Escritório",
+        assinaturaEntrega: "",
+        assinaturaRecebimento: "",
+        anexoFile: null,
+      })
+
+      toast.success("Cheque adicionado com sucesso.")
+    } catch (error) {
+      console.error("Erro ao adicionar cheque:", error)
+      toast.error("Ocorreu um erro ao adicionar o cheque.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="w-full min-h-screen  space-y-6 px-4">
@@ -368,14 +464,121 @@ const DetalhesOperacao: React.FC = () => {
         <p>Carregando...</p>
       ) : operacao ? (
         <>
-
-          <div >
+          <div>
             <div className="w-full flex justify-between items-center">
               <h1 className="text-2xl font-bold mb-4">Estorno Bancário</h1>
-              <Button type="button">
-                <Plus className="w-4 h-4" />
-                Adicionar cheque
-              </Button>
+              {/* Substituindo pelo Dialog */}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button type="button">
+                    <Plus className="w-4 h-4" />
+                    Adicionar cheque
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Adicionar Novo Cheque</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleAddCheque} className="space-y-4">
+                    {/* Campos do formulário */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label htmlFor="leitora">Leitora</Label>
+                        <Input
+                          type="text"
+                          id="leitora"
+                          value={novoCheque.leitora}
+                          onChange={(e) => setNovoCheque({ ...novoCheque, leitora: e.target.value })}
+                          placeholder="Leitora"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="numeroCheque">Número do Cheque</Label>
+                        <Input
+                          type="text"
+                          id="numeroCheque"
+                          value={novoCheque.numeroCheque}
+                          onChange={(e) => setNovoCheque({ ...novoCheque, numeroCheque: e.target.value })}
+                          placeholder="Número do Cheque"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="nome">Nome</Label>
+                        <Input
+                          type="text"
+                          id="nome"
+                          value={novoCheque.nome}
+                          onChange={(e) => setNovoCheque({ ...novoCheque, nome: e.target.value })}
+                          placeholder="Nome"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="cpf">CPF</Label>
+                        <ReactInputMask
+                          type="text"
+                          id="cpf"
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          mask="999.999.999-99"
+                          value={novoCheque.cpf}
+                          onChange={(e) => setNovoCheque({ ...novoCheque, cpf: e.target.value })}
+                          placeholder="CPF"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="valor">Valor</Label>
+                        <Input
+                          type="number"
+                          id="valor"
+                          value={novoCheque.valor}
+                          onChange={(e) => setNovoCheque({ ...novoCheque, valor: Number(e.target.value) })}
+                          placeholder="Valor"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="motivoDevolucao">Motivo da Devolução</Label>
+                        <Input
+                          type="text"
+                          id="motivoDevolucao"
+                          value={novoCheque.motivoDevolucao}
+                          onChange={(e) => setNovoCheque({ ...novoCheque, motivoDevolucao: e.target.value })}
+                          placeholder="Motivo da Devolução"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="numeroOperacao">Número da Operação</Label>
+                        <Input
+                          type="text"
+                          id="numeroOperacao"
+                          value={novoCheque.numeroOperacao}
+                          onChange={(e) => setNovoCheque({ ...novoCheque, numeroOperacao: e.target.value })}
+                          placeholder="Número da Operação"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="anexo">Anexo do Cheque</Label>
+                        <Input
+                          type="file"
+                          id="anexo"
+                          onChange={(e) =>
+                            setNovoCheque({ ...novoCheque, anexoFile: e.target.files ? e.target.files[0] : null })
+                          }
+                          accept=".pdf, .jpg, .jpeg, .png"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-4">
+                      <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? "Adicionando..." : "Adicionar Cheque"}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
             <p>
               <strong>Data Retirada:</strong>{" "}
@@ -385,17 +588,16 @@ const DetalhesOperacao: React.FC = () => {
               <strong>Quem Retirou:</strong> {operacao.quemRetirou}
             </p>
             <p>
-              <strong >Status:</strong> {operacao.status.charAt(0).toUpperCase() + operacao.status.slice(1)}
+              <strong>Status:</strong> {operacao.status.charAt(0).toUpperCase() + operacao.status.slice(1)}
             </p>
-
-
           </div>
 
           {/* Seção de Cheques */}
-          <div className="w-full">
-            <h2 className="text-lg font-bold">Cheques</h2>
-            {/* Filtro por Nome */}
-            <div className="flex items-center py-2">
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Cheques</h2>
+
+            {/* Filtro por Número da Operação */}
+            <div className="flex items-center py-4">
               <Input
                 placeholder="Filtrar por Número da Operação..."
                 value={(tableInstance.getColumn("numeroOperacao")?.getFilterValue() as string) ?? ""}
@@ -404,28 +606,6 @@ const DetalhesOperacao: React.FC = () => {
                 }
                 className="max-w-sm"
               />
-              {/* <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="ml-auto">
-                    Colunas <ChevronDown className="ml-1 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {tableInstance
-                    .getAllColumns()
-                    .filter(column => column.getCanHide())
-                    .map(column => (
-                      <DropdownMenuCheckboxItem
-                        key={column.id}
-                        className="capitalize"
-                        checked={column.getIsVisible()}
-                        onCheckedChange={value => column.toggleVisibility(!!value)}
-                      >
-                        {column.id === "select" ? "Selecionar" : column.id.charAt(0).toUpperCase() + column.id.slice(1)}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                </DropdownMenuContent>
-              </DropdownMenu> */}
             </div>
 
             {/* Renderização do DataTable */}
@@ -501,8 +681,6 @@ const DetalhesOperacao: React.FC = () => {
               </div>
             </div>
           </div>
-
-
         </>
       ) : (
         <p>Operação não encontrada.</p>
@@ -511,4 +689,4 @@ const DetalhesOperacao: React.FC = () => {
   )
 }
 
-export default DetalhesOperacao
+export default EstornosBancarios

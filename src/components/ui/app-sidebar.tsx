@@ -1,5 +1,6 @@
 // src/components/ui/app-sidebar.jsx
-import { Home, Settings, LogOut, BanknoteIcon } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { Home, Settings, LogOut, BanknoteIcon, RotateCw } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,6 +12,8 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { Link } from 'react-router-dom';
+import { Switch } from './switch';
+import { Label } from './label';
 
 // Itens do menu, sem a opção "Sair"
 const menuItems = [
@@ -20,9 +23,14 @@ const menuItems = [
     icon: Home,
   },
   {
-    title: "Estornos",
-    url: "/estornos",
-    icon: BanknoteIcon,
+    title: "Cheques",
+    url: '/cheques',
+    icon: BanknoteIcon
+  },
+  {
+    title: "Remessas",
+    url: '/remessas',
+    icon: RotateCw
   },
   {
     title: "Configurações",
@@ -41,9 +49,21 @@ const footerItems = [
 ];
 
 export function AppSidebar() {
+  // Estado para gerenciar o tema
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme ? savedTheme : 'light';
+  });
 
-  // Aplicar o tema ao carregar o componente
-
+  // Aplicar o tema ao elemento root
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   return (
     <Sidebar>
@@ -69,12 +89,18 @@ export function AppSidebar() {
 
         {/* Rodapé */}
         <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <SidebarMenu>
-           
+          <SidebarMenu className='space-y-4'>
+            {/* Switch de Tema */}
             <SidebarMenuItem>
-          
+              <div className="flex items-center space-x-2">
+                <Switch id="airplane-mode" checked={theme === 'dark'}
+                  onCheckedChange={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
+                <Label htmlFor="airplane-mode">Tema {theme === 'dark' ? 'Escuro' : 'Claro'}</Label>
+              </div>
+
             </SidebarMenuItem>
-             {footerItems.map((item) => (
+
+            {footerItems.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild>
                   <Link to={item.url} className="flex items-center p-2">
@@ -84,7 +110,6 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
-            {/* Switch de Tema */}
           </SidebarMenu>
         </div>
       </SidebarContent>
