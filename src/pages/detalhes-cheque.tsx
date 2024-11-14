@@ -246,10 +246,10 @@ const DetalhesCheque: React.FC = () => {
         await runTransaction(db, async (transaction) => {
           const remessaDoc = await transaction.get(remessaDocRef);
           if (!remessaDoc.exists()) {
-           alert('Remessa não encontrada.');
-           navigate('/')
+            alert('Remessa não encontrada.');
+            navigate('/')
 
-           return
+            return
           }
 
           const remessaData = remessaDoc.data() as any;
@@ -319,7 +319,6 @@ const DetalhesCheque: React.FC = () => {
 
             <h1 className="text-2xl font-bold mb-4 text-zinc-800 dark:text-white">Detalhes do Cheque: {cheque.numeroCheque}</h1>
             <div className="flex space-x-2">
-              {/* Botão para abrir o Sheet de edição */}
               <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetTrigger asChild>
                   <Button>Editar Cheque</Button>
@@ -435,7 +434,7 @@ const DetalhesCheque: React.FC = () => {
                         />
                       </div>
                       {/* Campo Local */}
-                  
+
                       {/* Campo Anexo do Cheque */}
                       <div >
                         <Label htmlFor="anexoFile">Anexo do Cheque</Label>
@@ -506,7 +505,7 @@ const DetalhesCheque: React.FC = () => {
           </div>
 
 
-          <Card className="w-full max-w-xl">
+          <Card className=" w-[100vh]">
 
             <CardContent className='px-6 py-4'>
               <div className="grid grid-cols-2 gap-2">
