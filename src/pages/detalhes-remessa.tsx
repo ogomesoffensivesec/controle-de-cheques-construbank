@@ -32,6 +32,21 @@ import { useAuth } from '@/contexts/auth-context';
 import { Cheque } from '@/interfaces/cheque';
 import { v4 } from 'uuid';
 import { Trash, Edit2, Plus } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { classificacoes } from '@/data/cheques';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const DetalhesRemessa: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -139,6 +154,14 @@ const DetalhesRemessa: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const formatarLeitora = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = event.target.value.replace(/\D/g, '');
+    const substringLeitora = formattedValue.slice(12, 17);
+    handleChange('numeroCheque', substringLeitora)
+    handleChange('leitora', formattedValue)
+  }
+
 
   // Funções para adicionar novos cheques
   const handleChange = (
@@ -390,14 +413,14 @@ const DetalhesRemessa: React.FC = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Cheques na Remessa</h2>
               {remessa.status !== 'Finalizada' && (
-                <Dialog>
+                <Dialog >
                   <DialogTrigger asChild>
                     <Button variant="outline">
                       <Plus className="mr-2 h-4 w-4" />
                       Adicionar Cheque
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className='max-w-6xl'>
                     <DialogHeader>
                       <DialogTitle>Adicionar Cheque</DialogTitle>
                       <DialogDescription>
@@ -405,21 +428,22 @@ const DetalhesRemessa: React.FC = () => {
                       </DialogDescription>
                     </DialogHeader>
                     {/* Formulário para adicionar/editar cheque */}
-                    <div className="space-y-2 mt-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <ScrollArea className="h-[400px] ">
+                      <div className='space-y-1.5 pr-6 '>
                         {/* Campo Leitora */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2  ">
                           <Label htmlFor="leitora">Leitora *</Label>
                           <Input
                             type="text"
                             id="leitora"
                             value={chequeAtual.leitora}
-                            onChange={(e) => handleChange('leitora', e.target.value)}
+                            onChange={(e) => formatarLeitora(e)}
                             placeholder="Leitora"
+
                           />
                         </div>
                         {/* Campo Número do Cheque */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="numeroCheque">Número do Cheque *</Label>
                           <Input
                             type="text"
@@ -430,7 +454,7 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                         {/* Campo Nome */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="nome">Nome *</Label>
                           <Input
                             type="text"
@@ -441,7 +465,7 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                         {/* Campo CPF */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="cpf">CPF/CNPJ *</Label>
                           <Input
                             type="text"
@@ -452,7 +476,7 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                         {/* Campo Valor */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="valor">Valor *</Label>
                           <Input
                             type="number"
@@ -463,18 +487,39 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                         {/* Campo Motivo da Devolução */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="motivoDevolucao">Motivo da Devolução</Label>
-                          <Input
-                            type="text"
-                            id="motivoDevolucao"
-                            value={chequeAtual.motivoDevolucao}
-                            onChange={(e) => handleChange('motivoDevolucao', e.target.value)}
-                            placeholder="Motivo da Devolução"
-                          />
+                          <Select onValueChange={(value) => handleChange('motivoDevolucao', value)}>
+                            <SelectTrigger >
+                              <SelectValue placeholder="Motivo da devolução" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {
+                                classificacoes.map((cls =>
+                                  <SelectItem key={cls.classificacao} value={`${cls.classificacao} - ${cls.motivo}`}>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          {cls.classificacao} -  {cls.motivo}
+                                        </TooltipTrigger>
+                                        {
+                                          cls.descricao && <TooltipContent>
+                                            {cls.descricao}
+                                          </TooltipContent>
+                                        }
+                                      </Tooltip>
+                                    </TooltipProvider>
+
+
+                                  </SelectItem>
+                                ))
+                              }
+
+                            </SelectContent>
+                          </Select>
                         </div>
                         {/* Campo Número da Operação */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="numeroOperacao">Número da Operação</Label>
                           <Input
                             type="text"
@@ -485,7 +530,7 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                         {/* Campo Anexo do Cheque */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="anexoFile">Anexo do Cheque</Label>
                           <Input
                             type="file"
@@ -497,7 +542,7 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                         {/* Campo Quem Retirou */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="quemRetirou">Quem Retirou *</Label>
                           <Input
                             type="text"
@@ -508,7 +553,7 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                         {/* Campo Data de Retirada */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="dataRetirada">Data da Retirada *</Label>
                           <Input
                             type="date"
@@ -518,7 +563,7 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                         {/* Campo Vencimento */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="vencimento">Vencimento do cheque *</Label>
                           <Input
                             type="date"
@@ -528,7 +573,7 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                         {/* Campo Local */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="local">Local</Label>
                           <Input
                             type="text"
@@ -540,7 +585,7 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                         {/* Campo Banco */}
-                        <div className="space-y-1">
+                        <div className="space-y-1 pr-2">
                           <Label htmlFor="banco">Banco *</Label>
                           <Input
                             type="text"
@@ -551,14 +596,15 @@ const DetalhesRemessa: React.FC = () => {
                           />
                         </div>
                       </div>
-                      <div className="flex justify-between items-center pt-4">
-                        <Button type="button" onClick={handleAddCheque}>
-                          {isEditing ? 'Atualizar Cheque' : 'Adicionar Cheque'}
-                        </Button>
-                        <Button type="button" onClick={handleSubmitCheques} disabled={isSubmitting}>
-                          {isSubmitting ? 'Salvando Cheques...' : 'Salvar Cheques'}
-                        </Button>
-                      </div>
+
+                    </ScrollArea>
+                    <div className="flex justify-between items-center pt-4">
+                      <Button type="button" onClick={handleAddCheque}>
+                        {isEditing ? 'Atualizar Cheque' : 'Adicionar Cheque'}
+                      </Button>
+                      <Button type="button" onClick={handleSubmitCheques} disabled={isSubmitting}>
+                        {isSubmitting ? 'Salvando Cheques...' : 'Salvar Cheques'}
+                      </Button>
                     </div>
                   </DialogContent>
                 </Dialog>

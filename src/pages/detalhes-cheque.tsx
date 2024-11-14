@@ -2,7 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, updateDoc, deleteDoc, arrayUnion, Timestamp } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  arrayUnion,
+  Timestamp,
+  runTransaction
+} from 'firebase/firestore';
 import { db, storage } from '@/db/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { toast, ToastContainer } from 'react-toastify';
@@ -23,6 +31,24 @@ import { Cheque } from '@/interfaces/cheque';
 import { Card, CardContent } from '@/components/ui/card';
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from '@/components/ui/breadcrumb';
 import { useAuth } from '@/contexts/auth-context';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { format } from 'date-fns';
+import { classificacoes } from '@/data/cheques';
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 /**
  * Componente para exibir e editar os detalhes de um cheque.
@@ -63,9 +89,8 @@ const DetalhesCheque: React.FC = () => {
       }
     };
 
-    console.log("a");
     fetchCheque();
-  }, [id, isUpdating === false]);
+  }, [id]);
 
   /**
    * Função para atualizar os campos do cheque.
@@ -115,6 +140,7 @@ const DetalhesCheque: React.FC = () => {
         anexoUrl = await uploadAnexo(cheque.anexoFile);
       }
 
+      // Atualiza o cheque no Firestore
       const chequeDocRef = doc(db, 'cheques', cheque.id);
 
       await updateDoc(chequeDocRef, {
@@ -128,7 +154,6 @@ const DetalhesCheque: React.FC = () => {
         anexoUrl,
         quemRetirou: cheque.quemRetirou,
         dataRetirada: cheque.dataRetirada,
-        local: cheque.local,
         log: arrayUnion({
           timestamp: Timestamp.now(),
           message: 'Cheque atualizado',
@@ -136,11 +161,60 @@ const DetalhesCheque: React.FC = () => {
         }), // Atualizar log do cheque
       });
 
+      // Verifica se o cheque está associado a uma remessa
+      if (cheque.remessaId) {
+        const remessaDocRef = doc(db, 'remessas', cheque.remessaId);
+
+        // Executa uma transação para atualizar a remessa de forma atômica
+        await runTransaction(db, async (transaction) => {
+          const remessaDoc = await transaction.get(remessaDocRef);
+          if (!remessaDoc.exists()) {
+            throw new Error('Remessa não encontrada.');
+          }
+
+          const remessaData = remessaDoc.data() as any;
+
+          // Encontra o índice do cheque na remessa
+          const chequeIndex = remessaData.cheques.findIndex((c: Cheque) => c.id === cheque.id);
+          if (chequeIndex === -1) {
+            throw new Error('Cheque não encontrado na remessa.');
+          }
+
+          // Atualiza os campos do cheque na remessa
+          remessaData.cheques[chequeIndex] = {
+            ...remessaData.cheques[chequeIndex],
+            leitora: cheque.leitora,
+            numeroCheque: cheque.numeroCheque,
+            nome: cheque.nome,
+            cpf: cheque.cpf,
+            valor: cheque.valor,
+            motivoDevolucao: cheque.motivoDevolucao,
+            numeroOperacao: cheque.numeroOperacao,
+            anexoUrl: cheque.anexoUrl,
+            quemRetirou: cheque.quemRetirou,
+            dataRetirada: cheque.dataRetirada,
+          };
+
+          // Adiciona um log na remessa
+          if (!remessaData.log) {
+            remessaData.log = [];
+          }
+          remessaData.log.push({
+            timestamp: Timestamp.now(),
+            message: `Cheque ${cheque.numeroCheque} atualizado`,
+            user: currentUser?.displayName || currentUser?.email || 'Usuário desconhecido',
+          });
+
+          // Atualiza a remessa no Firestore
+          transaction.update(remessaDocRef, remessaData);
+        });
+      }
+
       toast.success('Cheque atualizado com sucesso!');
       setIsSheetOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar cheque:', error);
-      toast.error('Ocorreu um erro ao atualizar o cheque.');
+      toast.error(error.message || 'Ocorreu um erro ao atualizar o cheque.');
     } finally {
       setIsUpdating(false);
     }
@@ -165,15 +239,59 @@ const DetalhesCheque: React.FC = () => {
       const chequeDocRef = doc(db, 'cheques', cheque.id);
       await deleteDoc(chequeDocRef);
 
+      // Se o cheque estiver associado a uma remessa, remove-o da remessa
+      if (cheque.remessaId) {
+        const remessaDocRef = doc(db, 'remessas', cheque.remessaId);
+
+        await runTransaction(db, async (transaction) => {
+          const remessaDoc = await transaction.get(remessaDocRef);
+          if (!remessaDoc.exists()) {
+           alert('Remessa não encontrada.');
+           navigate('/')
+
+           return
+          }
+
+          const remessaData = remessaDoc.data() as any;
+
+          // Filtra o cheque a ser removido
+          remessaData.cheques = remessaData.cheques.filter((c: Cheque) => c.id !== cheque.id);
+
+          // Adiciona um log na remessa
+          if (!remessaData.log) {
+            remessaData.log = [];
+          }
+          remessaData.log.push({
+            timestamp: Timestamp.now(),
+            message: `Cheque ${cheque.numeroCheque} excluído`,
+            user: currentUser?.displayName || currentUser?.email || 'Usuário desconhecido',
+          });
+
+          // Atualiza a remessa no Firestore
+          transaction.update(remessaDocRef, remessaData);
+        });
+      }
+
       toast.success('Cheque excluído com sucesso!');
       navigate('/cheques');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao excluir cheque:', error);
-      toast.error('Ocorreu um erro ao excluir o cheque.');
+      toast.error(error.message || 'Ocorreu um erro ao excluir o cheque.');
     } finally {
       setIsDeleting(false);
     }
   };
+
+  /**
+   * Função para formatar a leitora e número do cheque.
+   * @param event Evento de mudança no input.
+   */
+  const formatarLeitora = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const formattedValue = event.target.value.replace(/\D/g, '');
+    const substringLeitora = formattedValue.slice(12, 17);
+    handleChange('numeroCheque', substringLeitora)
+    handleChange('leitora', formattedValue)
+  }
 
   return (
     <div className="w-full min-h-screen p-4 space-y-6">
@@ -214,150 +332,174 @@ const DetalhesCheque: React.FC = () => {
                     </SheetDescription>
                   </SheetHeader>
                   {/* Formulário de edição */}
-                  <div className="mt-2 space-y-2">
-                    {/* Campo Leitora */}
-                    <div >
-                      <Label htmlFor="leitora">Leitora *</Label>
-                      <Input
-                        type="text"
-                        id="leitora"
-                        value={cheque.leitora}
-                        onChange={(e) => handleChange('leitora', e.target.value)}
-                        placeholder="Leitora"
-                        required
-                      />
+                  <ScrollArea className='h-[70vh]'>
+                    <div className="mt-2 space-y-2">
+                      {/* Campo Leitora */}
+                      <div >
+                        <Label htmlFor="leitora">Leitora *</Label>
+                        <Input
+                          type="text"
+                          id="leitora"
+                          value={cheque.leitora}
+                          onChange={(e) => formatarLeitora(e)}
+                          placeholder="Leitora"
+                          required
+                        />
+                      </div>
+                      {/* Campo Número do Cheque */}
+                      <div >
+                        <Label htmlFor="numeroCheque">Número do Cheque *</Label>
+                        <Input
+                          type="text"
+                          id="numeroCheque"
+                          value={cheque.numeroCheque}
+                          onChange={(e) => handleChange('numeroCheque', e.target.value)}
+                          placeholder="Número do Cheque"
+                          required
+                        />
+                      </div>
+                      {/* Campo Nome */}
+                      <div >
+                        <Label htmlFor="nome">Nome *</Label>
+                        <Input
+                          type="text"
+                          id="nome"
+                          value={cheque.nome}
+                          onChange={(e) => handleChange('nome', e.target.value)}
+                          placeholder="Nome"
+                          required
+                        />
+                      </div>
+                      {/* Campo CPF/CNPJ */}
+                      <div >
+                        <Label htmlFor="cpf">CPF/CNPJ *</Label>
+                        <Input
+                          type="text"
+                          id="cpf"
+                          value={cheque.cpf}
+                          onChange={(e) => handleChange('cpf', e.target.value)}
+                          placeholder="CPF/CNPJ"
+                          required
+                        />
+                      </div>
+                      {/* Campo Valor */}
+                      <div >
+                        <Label htmlFor="valor">Valor *</Label>
+                        <Input
+                          type="number"
+                          id="valor"
+                          value={cheque.valor}
+                          onChange={(e) => handleChange('valor', Number(e.target.value))}
+                          placeholder="Valor"
+                          required
+                        />
+                      </div>
+                      {/* Campo Motivo da Devolução */}
+                      <div >
+                        <Label htmlFor="motivoDevolucao">Motivo da Devolução</Label>
+                        <Select onValueChange={(value) => handleChange('motivoDevolucao', value)}>
+                          <SelectTrigger >
+                            <SelectValue placeholder="Motivo da devolução" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {
+                              classificacoes.map((cls =>
+                                <SelectItem key={cls.classificacao} value={`${cls.classificacao} - ${cls.motivo}`}>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger>
+                                        {cls.classificacao} -  {cls.motivo}
+                                      </TooltipTrigger>
+                                      {
+                                        cls.descricao && <TooltipContent>
+                                          {cls.descricao}
+                                        </TooltipContent>
+                                      }
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </SelectItem>
+                              ))
+                            }
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {/* Campo Número da Operação */}
+                      <div >
+                        <Label htmlFor="numeroOperacao">Número da Operação</Label>
+                        <Input
+                          type="text"
+                          id="numeroOperacao"
+                          value={cheque.numeroOperacao}
+                          onChange={(e) => handleChange('numeroOperacao', e.target.value)}
+                          placeholder="Número da Operação"
+                        />
+                      </div>
+                      {/* Campo Local */}
+                  
+                      {/* Campo Anexo do Cheque */}
+                      <div >
+                        <Label htmlFor="anexoFile">Anexo do Cheque</Label>
+                        <Input
+                          type="file"
+                          id="anexoFile"
+                          onChange={(e) =>
+                            handleChange(
+                              'anexoFile',
+                              e.target.files ? e.target.files[0] : null
+                            )
+                          }
+                          accept=".pdf, .jpg, .jpeg, .png"
+                        />
+                        {cheque.anexoUrl && (
+                          <p className="mt-2">
+                            Anexo atual:{' '}
+                            <a
+                              href={cheque.anexoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 underline"
+                            >
+                              Visualizar
+                            </a>
+                          </p>
+                        )}
+                      </div>
+                      {/* Campo Quem Retirou */}
+                      <div >
+                        <Label htmlFor="quemRetirou">Quem Retirou *</Label>
+                        <Input
+                          type="text"
+                          id="quemRetirou"
+                          value={cheque.quemRetirou}
+                          onChange={(e) => handleChange('quemRetirou', e.target.value)}
+                          placeholder="Nome do responsável"
+                          required
+                        />
+                      </div>
+                      {/* Campo Data de Retirada */}
+                      <div >
+                        <Label htmlFor="dataRetirada">Data da Retirada *</Label>
+                        <Input
+                          type="date"
+                          id="dataRetirada"
+                          value={cheque.dataRetirada}
+                          onChange={(e) => handleChange('dataRetirada', e.target.value)}
+                          required
+                        />
+                      </div>
+                      {/* Botões de ação */}
+                      <div className="flex justify-end space-x-2 mt-4">
+                        <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+                          {isDeleting ? 'Excluindo...' : 'Excluir Cheque'}
+                          <Trash className="w-4 h-4 ml-2" />
+                        </Button>
+                        <Button onClick={handleUpdate} disabled={isUpdating}>
+                          {isUpdating ? 'Atualizando...' : 'Salvar Alterações'}
+                        </Button>
+                      </div>
                     </div>
-                    {/* Campo Número do Cheque */}
-                    <div >
-                      <Label htmlFor="numeroCheque">Número do Cheque *</Label>
-                      <Input
-                        type="text"
-                        id="numeroCheque"
-                        value={cheque.numeroCheque}
-                        onChange={(e) => handleChange('numeroCheque', e.target.value)}
-                        placeholder="Número do Cheque"
-                        required
-                      />
-                    </div>
-                    {/* Campo Nome */}
-                    <div >
-                      <Label htmlFor="nome">Nome *</Label>
-                      <Input
-                        type="text"
-                        id="nome"
-                        value={cheque.nome}
-                        onChange={(e) => handleChange('nome', e.target.value)}
-                        placeholder="Nome"
-                        required
-                      />
-                    </div>
-                    {/* Campo CPF */}
-                    <div >
-                      <Label htmlFor="cpf">CPF/CNPJ *</Label>
-                      <Input
-                        type="text"
-                        id="cpf"
-                        value={cheque.cpf}
-                        onChange={(e) => handleChange('cpf', e.target.value)}
-                        placeholder="CPF/CNPJ"
-                      />
-                    </div>
-                    {/* Campo Valor */}
-                    <div >
-                      <Label htmlFor="valor">Valor *</Label>
-                      <Input
-                        type="number"
-                        id="valor"
-                        value={cheque.valor}
-                        onChange={(e) => handleChange('valor', Number(e.target.value))}
-                        placeholder="Valor"
-                        required
-                      />
-                    </div>
-                    {/* Campo Motivo da Devolução */}
-                    <div >
-                      <Label htmlFor="motivoDevolucao">Motivo da Devolução</Label>
-                      <Input
-                        type="text"
-                        id="motivoDevolucao"
-                        value={cheque.motivoDevolucao}
-                        onChange={(e) => handleChange('motivoDevolucao', e.target.value)}
-                        placeholder="Motivo da Devolução"
-                      />
-                    </div>
-                    {/* Campo Número da Operação */}
-                    <div >
-                      <Label htmlFor="numeroOperacao">Número da Operação</Label>
-                      <Input
-                        type="text"
-                        id="numeroOperacao"
-                        value={cheque.numeroOperacao}
-                        onChange={(e) => handleChange('numeroOperacao', e.target.value)}
-                        placeholder="Número da Operação"
-                      />
-                    </div>
-                    {/* Campo Anexo do Cheque */}
-                    <div >
-                      <Label htmlFor="anexoFile">Anexo do Cheque</Label>
-                      <Input
-                        type="file"
-                        id="anexoFile"
-                        onChange={(e) =>
-                          handleChange(
-                            'anexoFile',
-                            e.target.files ? e.target.files[0] : null
-                          )
-                        }
-                        accept=".pdf, .jpg, .jpeg, .png"
-                      />
-                      {cheque.anexoUrl && (
-                        <p className="mt-2">
-                          Anexo atual:{' '}
-                          <a
-                            href={cheque.anexoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 underline"
-                          >
-                            Visualizar
-                          </a>
-                        </p>
-                      )}
-                    </div>
-                    {/* Campo Quem Retirou */}
-                    <div >
-                      <Label htmlFor="quemRetirou">Quem Retirou *</Label>
-                      <Input
-                        type="text"
-                        id="quemRetirou"
-                        value={cheque.quemRetirou}
-                        onChange={(e) => handleChange('quemRetirou', e.target.value)}
-                        placeholder="Nome do responsável"
-                        required
-                      />
-                    </div>
-                    {/* Campo Data de Retirada */}
-                    <div >
-                      <Label htmlFor="dataRetirada">Data da Retirada *</Label>
-                      <Input
-                        type="date"
-                        id="dataRetirada"
-                        value={cheque.dataRetirada}
-                        onChange={(e) => handleChange('dataRetirada', e.target.value)}
-                        required
-                      />
-                    </div>
-                    {/* Botões de ação */}
-                    <div className="flex justify-end space-x-2 mt-4">
-                      <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                        {isDeleting ? 'Excluindo...' : 'Excluir Cheque'}
-                        <Trash className="w-4 h-4 ml-2" />
-                      </Button>
-                      <Button onClick={handleUpdate} disabled={isUpdating}>
-                        {isUpdating ? 'Atualizando...' : 'Salvar Alterações'}
-                      </Button>
-                    </div>
-                  </div>
+                  </ScrollArea>
+
                 </SheetContent>
               </Sheet>
             </div>
@@ -381,7 +523,7 @@ const DetalhesCheque: React.FC = () => {
                   <p className="font-medium">{cheque.nome}</p>
                 </div>
                 <div >
-                  <p className="text-sm font-medium text-muted-foreground">CPF</p>
+                  <p className="text-sm font-medium text-muted-foreground">CPF/CNPJ</p>
                   <p className="font-medium">{cheque.cpf}</p>
                 </div>
                 <div >
@@ -430,19 +572,18 @@ const DetalhesCheque: React.FC = () => {
             <h2 className="text-xl font-semibold mb-4">Log de Atividades</h2>
             {/* Display log entries */}
             {cheque.log && cheque.log.length > 0 ? (
-              <div className="space-y-4">
+              <ScrollArea className="space-y-4 h-[300px]">
                 {cheque.log
                   .sort((a, b) => b.timestamp.seconds - a.timestamp.seconds) // Ordenar por data decrescente
                   .map((entry, index) => (
-                    <div key={index} className=" w-1/2 border-b p-2">
+                    <div key={index} className="w-1/2 border-b p-2">
                       <p className="text-xs text-gray-500 ">
-                        Por {entry.user} às
-                        {""}  {new Date(entry.timestamp.toDate()).toLocaleString('pt-BR')}
+                        Por {entry.user} às {format(entry.timestamp.toDate(), 'dd/MM/yyyy HH:mm:ss')}
                       </p>
                       <p>{entry.message}</p>
                     </div>
                   ))}
-              </div>
+              </ScrollArea>
             ) : (
               <p>Nenhuma atividade registrada.</p>
             )}

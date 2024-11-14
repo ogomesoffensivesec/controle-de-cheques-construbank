@@ -210,6 +210,8 @@ const NovaRemessa: React.FC = () => {
 
   // Função para iniciar a remessa
   const handleIniciarRemessa = async () => {
+    setIsLoading(true)
+
     if (selectedCheques.length === 0) {
       toast.error('Selecione pelo menos um cheque para iniciar a remessa.');
       return;
@@ -263,6 +265,8 @@ const NovaRemessa: React.FC = () => {
     } catch (error) {
       console.error('Erro ao iniciar remessa:', error);
       toast.error('Ocorreu um erro ao iniciar a remessa.');
+    } finally {
+      setIsLoading(false)
     }
   };
 
