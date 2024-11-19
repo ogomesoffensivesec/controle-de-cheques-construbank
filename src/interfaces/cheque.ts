@@ -20,6 +20,7 @@ export interface Cheque {
   local: string;
   remessaId?: string;
   createdAt?: Date;
+  regiao: string;
   log?: Array<{
     timestamp: Timestamp;
     message: string;

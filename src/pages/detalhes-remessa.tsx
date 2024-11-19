@@ -34,19 +34,13 @@ import { v4 } from 'uuid';
 import { Trash, Edit2, Plus } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { classificacoes } from '@/data/cheques';
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { classificacoes } from '@/data/cheques';
 
 const DetalhesRemessa: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -75,6 +69,7 @@ const DetalhesRemessa: React.FC = () => {
     local: 'Escritório',
     banco: '',
     vencimento: '',
+    regiao: '', // Campo Região
     log: []
   });
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -190,17 +185,23 @@ const DetalhesRemessa: React.FC = () => {
       return;
     }
 
+    // Define "Não definido" para regiao se não for fornecida
+    const chequeToAdd: Cheque = {
+      ...chequeAtual,
+      regiao: chequeAtual.regiao.trim() === '' ? 'Não definido' : chequeAtual.regiao.trim(),
+    };
+
     if (isEditing) {
       // Editando um cheque existente
       setCheques((prevCheques) =>
         prevCheques.map((cheque) =>
-          cheque.id === chequeAtual.id ? chequeAtual : cheque
+          cheque.id === chequeToAdd.id ? chequeToAdd : cheque
         )
       );
       setIsEditing(false);
     } else {
       // Adicionando um novo cheque
-      setCheques((prevCheques) => [...prevCheques, chequeAtual]);
+      setCheques((prevCheques) => [...prevCheques, chequeToAdd]);
     }
 
     // Limpar o formulário
@@ -219,6 +220,7 @@ const DetalhesRemessa: React.FC = () => {
       local: 'Escritório',
       banco: '',
       vencimento: '',
+      regiao: '',
       log: []
     });
   };
@@ -273,10 +275,11 @@ const DetalhesRemessa: React.FC = () => {
           anexoUrl,
           quemRetirou: cheque.quemRetirou,
           dataRetirada: cheque.dataRetirada,
-          local: 'Remessa ' + remessa.protocolo,
+          local: `Remessa ${remessa.protocolo}`,
           createdAt: Timestamp.now(),
           banco: cheque.banco,
           vencimento: cheque.vencimento,
+          regiao: cheque.regiao, // Inclusão do campo Região
           log: [
             {
               timestamp: Timestamp.now(),
@@ -302,8 +305,10 @@ const DetalhesRemessa: React.FC = () => {
             vencimento: cheque.vencimento,
             nome: cheque.nome,
             valor: cheque.valor,
+            regiao: cheque.regiao, // Inclusão do campo Região na remessa
           }),
         });
+
         // Atualizar o estado local da remessa
         setRemessa((prev) => {
           if (prev) {
@@ -316,11 +321,12 @@ const DetalhesRemessa: React.FC = () => {
                 vencimento: cheque.vencimento,
                 nome: cheque.nome,
                 valor: cheque.valor,
+                regiao: cheque.regiao,
                 leitora: cheque.leitora,
                 cpf: cheque.cpf,
                 quemRetirou: cheque.quemRetirou,
                 dataRetirada: cheque.dataRetirada,
-                local: 'Remessa ' + remessa.protocolo,
+                local: `Remessa ${remessa.protocolo}`,
               }),
             };
           } else {
@@ -413,7 +419,7 @@ const DetalhesRemessa: React.FC = () => {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Cheques na Remessa</h2>
               {remessa.status !== 'Finalizada' && (
-                <Dialog >
+                <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="outline">
                       <Plus className="mr-2 h-4 w-4" />
@@ -439,7 +445,7 @@ const DetalhesRemessa: React.FC = () => {
                             value={chequeAtual.leitora}
                             onChange={(e) => formatarLeitora(e)}
                             placeholder="Leitora"
-
+                            required
                           />
                         </div>
                         {/* Campo Número do Cheque */}
@@ -451,6 +457,7 @@ const DetalhesRemessa: React.FC = () => {
                             value={chequeAtual.numeroCheque}
                             onChange={(e) => handleChange('numeroCheque', e.target.value)}
                             placeholder="Número do Cheque"
+                            required
                           />
                         </div>
                         {/* Campo Nome */}
@@ -460,8 +467,12 @@ const DetalhesRemessa: React.FC = () => {
                             type="text"
                             id="nome"
                             value={chequeAtual.nome}
-                            onChange={(e) => handleChange('nome', e.target.value)}
+                            onChange={(e) => {
+                              e.target.value = e.target.value.toUpperCase();
+                              handleChange('nome', e.target.value);
+                            }}
                             placeholder="Nome"
+                            required
                           />
                         </div>
                         {/* Campo CPF */}
@@ -473,6 +484,7 @@ const DetalhesRemessa: React.FC = () => {
                             value={chequeAtual.cpf}
                             onChange={(e) => handleChange('cpf', e.target.value)}
                             placeholder="CPF/CNPJ"
+                            required
                           />
                         </div>
                         {/* Campo Valor */}
@@ -484,37 +496,38 @@ const DetalhesRemessa: React.FC = () => {
                             value={chequeAtual.valor}
                             onChange={(e) => handleChange('valor', Number(e.target.value))}
                             placeholder="Valor"
+                            required
                           />
                         </div>
                         {/* Campo Motivo da Devolução */}
                         <div className="space-y-1 pr-2">
                           <Label htmlFor="motivoDevolucao">Motivo da Devolução</Label>
-                          <Select onValueChange={(value) => handleChange('motivoDevolucao', value)}>
-                            <SelectTrigger >
-                              <SelectValue placeholder="Motivo da devolução" />
-                            </SelectTrigger>
+                          <Select
+                            value={chequeAtual.motivoDevolucao}
+                            onValueChange={(value) => handleChange('motivoDevolucao', value)}
+                          >
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="w-full">
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Motivo da devolução" />
+                                    </SelectTrigger>
+                                  </span>
+                                </TooltipTrigger>
+                                {chequeAtual.motivoDevolucao && (
+                                  <TooltipContent>
+                                    {/* Adicione aqui uma descrição detalhada do motivo, se disponível */}
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </TooltipProvider>
                             <SelectContent>
-                              {
-                                classificacoes.map((cls =>
-                                  <SelectItem key={cls.classificacao} value={`${cls.classificacao} - ${cls.motivo}`}>
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger>
-                                          {cls.classificacao} -  {cls.motivo}
-                                        </TooltipTrigger>
-                                        {
-                                          cls.descricao && <TooltipContent>
-                                            {cls.descricao}
-                                          </TooltipContent>
-                                        }
-                                      </Tooltip>
-                                    </TooltipProvider>
-
-
-                                  </SelectItem>
-                                ))
-                              }
-
+                              {classificacoes.map((cls) => (
+                                <SelectItem key={cls.classificacao} value={`${cls.classificacao} - ${cls.motivo}`}>
+                                  {cls.classificacao} - {cls.motivo}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -550,6 +563,7 @@ const DetalhesRemessa: React.FC = () => {
                             value={chequeAtual.quemRetirou}
                             onChange={(e) => handleChange('quemRetirou', e.target.value)}
                             placeholder="Nome do responsável"
+                            required
                           />
                         </div>
                         {/* Campo Data de Retirada */}
@@ -560,6 +574,7 @@ const DetalhesRemessa: React.FC = () => {
                             id="dataRetirada"
                             value={chequeAtual.dataRetirada}
                             onChange={(e) => handleChange('dataRetirada', e.target.value)}
+                            required
                           />
                         </div>
                         {/* Campo Vencimento */}
@@ -570,17 +585,19 @@ const DetalhesRemessa: React.FC = () => {
                             id="vencimento"
                             value={chequeAtual.vencimento}
                             onChange={(e) => handleChange('vencimento', e.target.value)}
+                            required
                           />
                         </div>
                         {/* Campo Local */}
                         <div className="space-y-1 pr-2">
-                          <Label htmlFor="local">Local</Label>
+                          <Label htmlFor="local">Local *</Label>
                           <Input
                             type="text"
                             id="local"
                             value={chequeAtual.local}
                             onChange={(e) => handleChange('local', e.target.value)}
                             placeholder="Local do Cheque"
+                            required
                             disabled
                           />
                         </div>
@@ -593,6 +610,19 @@ const DetalhesRemessa: React.FC = () => {
                             value={chequeAtual.banco}
                             onChange={(e) => handleChange('banco', e.target.value)}
                             placeholder="Banco"
+                            required
+                          />
+                        </div>
+                        {/* Campo Região */}
+                        <div className="space-y-1 pr-2">
+                          <Label htmlFor="regiao">Região *</Label>
+                          <Input
+                            type="text"
+                            id="regiao"
+                            value={chequeAtual.regiao}
+                            onChange={(e) => handleChange('regiao', e.target.value)}
+                            placeholder="Região"
+                            required
                           />
                         </div>
                       </div>
@@ -640,6 +670,9 @@ const DetalhesRemessa: React.FC = () => {
                             currency: 'BRL',
                           })}
                         </p>
+                        <p>
+                          <strong>Região:</strong> {cheque.regiao || 'Não definido'}
+                        </p>
                       </div>
                       <div className="flex space-x-2">
                         <Button
@@ -661,7 +694,7 @@ const DetalhesRemessa: React.FC = () => {
               </div>
             )}
             {/* Tabela de Cheques da Remessa */}
-            <div className="rounded-md border">
+            <div className="rounded-md border mt-6">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -670,6 +703,7 @@ const DetalhesRemessa: React.FC = () => {
                     <TableHead>Banco</TableHead>
                     <TableHead>Vencimento</TableHead>
                     <TableHead>Nome</TableHead>
+                    <TableHead>Região</TableHead> {/* Nova coluna Região */}
                     <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -685,6 +719,7 @@ const DetalhesRemessa: React.FC = () => {
                           : 'Data não disponível'}
                       </TableCell>
                       <TableCell>{cheque.nome}</TableCell>
+                      <TableCell>{cheque.regiao || 'Não definido'}</TableCell> {/* Exibição da Região */}
                       <TableCell className="text-right">
                         {cheque.valor.toLocaleString('pt-BR', {
                           style: 'currency',

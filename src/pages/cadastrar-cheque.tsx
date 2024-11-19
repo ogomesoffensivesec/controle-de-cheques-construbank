@@ -78,6 +78,7 @@ const NovoCheque: React.FC = () => {
     local: 'Escritório',
     banco: '',
     vencimento: '',
+    regiao: '', // Novo campo Região adicionado aqui
     log: []
   });
 
@@ -118,7 +119,8 @@ const NovoCheque: React.FC = () => {
       !chequeAtual.quemRetirou ||
       !chequeAtual.dataRetirada ||
       !chequeAtual.banco ||
-      !chequeAtual.local
+      !chequeAtual.local ||
+      !chequeAtual.regiao // Validação para o novo campo Região
     ) {
       toast.error('Por favor, preencha todos os campos obrigatórios.');
       return;
@@ -155,6 +157,7 @@ const NovoCheque: React.FC = () => {
       local: 'Escritório',
       banco: '',
       vencimento: '',
+      regiao: '', // Reset do campo Região
       log: []
     });
 
@@ -235,6 +238,7 @@ const NovoCheque: React.FC = () => {
           quemRetirou: cheque.quemRetirou,
           dataRetirada: cheque.dataRetirada,
           local: cheque.local,
+          regiao: cheque.regiao, // Inclusão do campo Região no Firestore
           createdAt: Timestamp.now(),
           banco: cheque.banco,
           vencimento: cheque.vencimento,
@@ -331,6 +335,9 @@ const NovoCheque: React.FC = () => {
                       style: 'currency',
                       currency: 'BRL',
                     })}
+                  </p>
+                  <p>
+                    <strong>Região:</strong> {cheque.regiao} {/* Exibição do novo campo */}
                   </p>
                 </div>
                 <div className="flex space-x-2">
@@ -500,11 +507,23 @@ const NovoCheque: React.FC = () => {
               required
             />
           </div>
+          {/* Campo Região */}
+          <div className="space-y-1">
+            <Label htmlFor="regiao">Região *</Label>
+            <Input
+              type="text"
+              id="regiao"
+              value={chequeAtual.regiao}
+              onChange={(e) => handleChange('regiao', e.target.value)}
+              placeholder="Região"
+              required
+            />
+          </div>
           {/* Campo Local */}
           <div className="space-y-1">
             <Label htmlFor="local">Local *</Label>
             <Select
-            disabled
+              disabled
               value={chequeAtual.local}
               onValueChange={(value) => handleChange('local', value)}
               required

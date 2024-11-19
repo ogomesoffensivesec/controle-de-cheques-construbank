@@ -60,6 +60,9 @@ const Cheques: React.FC = () => {
     to: undefined,
   });
 
+  // Estado para filtro de Região
+  const [filterRegiao, setFilterRegiao] = useState<string | undefined>(undefined);
+
   /**
    * Busca os cheques no Firestore.
    */
@@ -73,7 +76,12 @@ const Cheques: React.FC = () => {
           id: doc.id,
           ...doc.data(),
         })) as Cheque[];
-        setCheques(chequesList);
+        // Definir "Não definido" para cheques sem região
+        const chequesComRegiao = chequesList.map((cheque) => ({
+          ...cheque,
+          regiao: cheque.regiao || 'Não definido',
+        }));
+        setCheques(chequesComRegiao);
       } catch (error) {
         console.error('Erro ao buscar cheques:', error);
         toast.error('Ocorreu um erro ao buscar os cheques.');
@@ -162,6 +170,11 @@ const Cheques: React.FC = () => {
       header: 'Local',
     },
     {
+      accessorKey: 'regiao',
+      header: 'Região',
+      filterFn: 'includesString',
+    },
+    {
       accessorKey: 'banco',
       header: "Banco",
       cell: ({ row }) => row.getValue('banco')
@@ -211,6 +224,7 @@ const Cheques: React.FC = () => {
 
   /**
    * Função para exportar o relatório em PDF dos cheques no escritório.
+   * Agora inclui a Região no relatório.
    */
   const exportarRelatorioPDF = () => {
     // Filtra os cheques que estão no escritório
@@ -232,7 +246,7 @@ const Cheques: React.FC = () => {
     doc.text(`Data: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 30);
 
     // Tabela com os cheques
-    const tableColumn = ["Número do Cheque", "Banco", "Vencimento", "Nome", "Valor"];
+    const tableColumn = ["Número do Cheque", "Banco", "Região", "Vencimento", "Nome", "Valor"];
     const tableRows: any = [];
 
     chequesNoEscritorio.forEach((cheque) => {
@@ -246,6 +260,7 @@ const Cheques: React.FC = () => {
       const chequeData = [
         cheque.numeroCheque,
         cheque.banco,
+        cheque.regiao || 'Não definido', // Inclusão do campo Região com valor padrão
         vencimento,
         cheque.nome,
         valorFormatado,
@@ -320,6 +335,21 @@ const Cheques: React.FC = () => {
                   }
                   className="max-w-xs"
                 />
+                {/* Filtro por Região */}
+                <Input
+                  placeholder="Filtrar por Região..."
+                  value={filterRegiao || ''}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setFilterRegiao(value);
+                    if (value.trim() === '') {
+                      table.getColumn('regiao')?.setFilterValue(undefined);
+                    } else {
+                      table.getColumn('regiao')?.setFilterValue(value);
+                    }
+                  }}
+                  className="max-w-xs"
+                />
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -365,9 +395,9 @@ const Cheques: React.FC = () => {
                             {header.isPlaceholder
                               ? null
                               : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
                           </TableHead>
                         ))}
                       </TableRow>
@@ -404,12 +434,12 @@ const Cheques: React.FC = () => {
                 </Table>
               </div>
               {/* Controles de paginação e seleção */}
-              <div className="flex items-center justify-between space-x-2 py-4">
+              <div className="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0">
                 <div className="flex-1 text-sm text-muted-foreground">
                   {table.getFilteredSelectedRowModel().rows.length} de{' '}
                   {table.getFilteredRowModel().rows.length} cheque(s) selecionado(s).
                 </div>
-                <div className="space-x-2">
+                <div className="flex items-center space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -418,6 +448,9 @@ const Cheques: React.FC = () => {
                   >
                     Anterior
                   </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
+                  </span>
                   <Button
                     variant="outline"
                     size="sm"

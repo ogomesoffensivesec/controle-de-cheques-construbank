@@ -77,7 +77,11 @@ const DetalhesCheque: React.FC = () => {
         const chequeDoc = await getDoc(chequeDocRef);
 
         if (chequeDoc.exists()) {
-          setCheque({ id: chequeDoc.id, ...chequeDoc.data() } as Cheque);
+          const data = chequeDoc.data() as Cheque;
+          setCheque({
+            ...data,
+            regiao: data.regiao || 'Não definido', // Definido como "Não definido" se ausente
+          });
         } else {
           toast.error('Cheque não encontrado.');
         }
@@ -154,6 +158,7 @@ const DetalhesCheque: React.FC = () => {
         anexoUrl,
         quemRetirou: cheque.quemRetirou,
         dataRetirada: cheque.dataRetirada,
+        regiao: cheque.regiao, // Inclusão do campo Região
         log: arrayUnion({
           timestamp: Timestamp.now(),
           message: 'Cheque atualizado',
@@ -193,6 +198,7 @@ const DetalhesCheque: React.FC = () => {
             anexoUrl: cheque.anexoUrl,
             quemRetirou: cheque.quemRetirou,
             dataRetirada: cheque.dataRetirada,
+            regiao: cheque.regiao, // Atualização do campo Região na remessa
           };
 
           // Adiciona um log na remessa
@@ -247,9 +253,8 @@ const DetalhesCheque: React.FC = () => {
           const remessaDoc = await transaction.get(remessaDocRef);
           if (!remessaDoc.exists()) {
             alert('Remessa não encontrada.');
-            navigate('/')
-
-            return
+            navigate('/cheques');
+            return;
           }
 
           const remessaData = remessaDoc.data() as any;
@@ -316,7 +321,6 @@ const DetalhesCheque: React.FC = () => {
             </BreadcrumbList>
           </Breadcrumb>
           <div className="flex justify-between items-center">
-
             <h1 className="text-2xl font-bold mb-4 text-zinc-800 dark:text-white">Detalhes do Cheque: {cheque.numeroCheque}</h1>
             <div className="flex space-x-2">
               <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -334,7 +338,7 @@ const DetalhesCheque: React.FC = () => {
                   <ScrollArea className='h-[70vh]'>
                     <div className="mt-2 space-y-2">
                       {/* Campo Leitora */}
-                      <div >
+                      <div>
                         <Label htmlFor="leitora">Leitora *</Label>
                         <Input
                           type="text"
@@ -346,7 +350,7 @@ const DetalhesCheque: React.FC = () => {
                         />
                       </div>
                       {/* Campo Número do Cheque */}
-                      <div >
+                      <div>
                         <Label htmlFor="numeroCheque">Número do Cheque *</Label>
                         <Input
                           type="text"
@@ -358,19 +362,22 @@ const DetalhesCheque: React.FC = () => {
                         />
                       </div>
                       {/* Campo Nome */}
-                      <div >
+                      <div>
                         <Label htmlFor="nome">Nome *</Label>
                         <Input
                           type="text"
                           id="nome"
                           value={cheque.nome}
-                          onChange={(e) => handleChange('nome', e.target.value)}
+                          onChange={(e) => {
+                            e.target.value = e.target.value.toUpperCase();
+                            handleChange('nome', e.target.value);
+                          }}
                           placeholder="Nome"
                           required
                         />
                       </div>
                       {/* Campo CPF/CNPJ */}
-                      <div >
+                      <div>
                         <Label htmlFor="cpf">CPF/CNPJ *</Label>
                         <Input
                           type="text"
@@ -382,7 +389,7 @@ const DetalhesCheque: React.FC = () => {
                         />
                       </div>
                       {/* Campo Valor */}
-                      <div >
+                      <div>
                         <Label htmlFor="valor">Valor *</Label>
                         <Input
                           type="number"
@@ -394,36 +401,37 @@ const DetalhesCheque: React.FC = () => {
                         />
                       </div>
                       {/* Campo Motivo da Devolução */}
-                      <div >
+                      <div>
                         <Label htmlFor="motivoDevolucao">Motivo da Devolução</Label>
-                        <Select onValueChange={(value) => handleChange('motivoDevolucao', value)}>
-                          <SelectTrigger >
+                        <Select
+                          value={cheque.motivoDevolucao}
+                          onValueChange={(value) => handleChange('motivoDevolucao', value)}
+                        >
+                          <SelectTrigger>
                             <SelectValue placeholder="Motivo da devolução" />
                           </SelectTrigger>
                           <SelectContent>
-                            {
-                              classificacoes.map((cls =>
-                                <SelectItem key={cls.classificacao} value={`${cls.classificacao} - ${cls.motivo}`}>
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger>
-                                        {cls.classificacao} -  {cls.motivo}
-                                      </TooltipTrigger>
-                                      {
-                                        cls.descricao && <TooltipContent>
-                                          {cls.descricao}
-                                        </TooltipContent>
-                                      }
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </SelectItem>
-                              ))
-                            }
+                            {classificacoes.map((cls) => (
+                              <SelectItem key={cls.classificacao} value={`${cls.classificacao} - ${cls.motivo}`}>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span>{cls.classificacao} -  {cls.motivo}</span>
+                                    </TooltipTrigger>
+                                    {cls.descricao && (
+                                      <TooltipContent>
+                                        {cls.descricao}
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
                       {/* Campo Número da Operação */}
-                      <div >
+                      <div>
                         <Label htmlFor="numeroOperacao">Número da Operação</Label>
                         <Input
                           type="text"
@@ -433,10 +441,55 @@ const DetalhesCheque: React.FC = () => {
                           placeholder="Número da Operação"
                         />
                       </div>
+                      {/* Campo Banco */}
+                      <div>
+                        <Label htmlFor="banco">Banco *</Label>
+                        <Input
+                          type="text"
+                          id="banco"
+                          value={cheque.banco}
+                          onChange={(e) => handleChange('banco', e.target.value)}
+                          placeholder="Banco"
+                          required
+                        />
+                      </div>
+                      {/* Campo Vencimento */}
+                      <div>
+                        <Label htmlFor="vencimento">Vencimento do Cheque *</Label>
+                        <Input
+                          type="date"
+                          id="vencimento"
+                          value={cheque.vencimento}
+                          onChange={(e) => handleChange('vencimento', e.target.value)}
+                          required
+                        />
+                      </div>
+                      {/* Campo Região */}
+                      <div>
+                        <Label htmlFor="regiao">Região *</Label>
+                        <Input
+                          type="text"
+                          id="regiao"
+                          value={cheque.regiao}
+                          onChange={(e) => handleChange('regiao', e.target.value)}
+                          placeholder="Região"
+                          required
+                        />
+                      </div>
                       {/* Campo Local */}
-
+                      <div>
+                        <Label htmlFor="local">Local *</Label>
+                        <Input
+                          type="text"
+                          id="local"
+                          value={cheque.local}
+                          onChange={(e) => handleChange('local', e.target.value)}
+                          placeholder="Local"
+                          required
+                        />
+                      </div>
                       {/* Campo Anexo do Cheque */}
-                      <div >
+                      <div>
                         <Label htmlFor="anexoFile">Anexo do Cheque</Label>
                         <Input
                           type="file"
@@ -464,7 +517,7 @@ const DetalhesCheque: React.FC = () => {
                         )}
                       </div>
                       {/* Campo Quem Retirou */}
-                      <div >
+                      <div>
                         <Label htmlFor="quemRetirou">Quem Retirou *</Label>
                         <Input
                           type="text"
@@ -476,7 +529,7 @@ const DetalhesCheque: React.FC = () => {
                         />
                       </div>
                       {/* Campo Data de Retirada */}
-                      <div >
+                      <div>
                         <Label htmlFor="dataRetirada">Data da Retirada *</Label>
                         <Input
                           type="date"
@@ -498,34 +551,31 @@ const DetalhesCheque: React.FC = () => {
                       </div>
                     </div>
                   </ScrollArea>
-
                 </SheetContent>
               </Sheet>
             </div>
           </div>
 
-
-          <Card className=" w-[100vh]">
-
+          <Card className="w-full">
             <CardContent className='px-6 py-4'>
               <div className="grid grid-cols-2 gap-2">
-                <div >
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Leitora</p>
                   <p className="font-medium">{cheque.leitora}</p>
                 </div>
-                <div >
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Número do Cheque</p>
                   <p className="font-medium">{cheque.numeroCheque}</p>
                 </div>
-                <div >
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Nome</p>
                   <p className="font-medium">{cheque.nome}</p>
                 </div>
-                <div >
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">CPF/CNPJ</p>
                   <p className="font-medium">{cheque.cpf}</p>
                 </div>
-                <div >
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Valor</p>
                   <p className="font-medium">
                     {cheque.valor.toLocaleString('pt-BR', {
@@ -534,32 +584,37 @@ const DetalhesCheque: React.FC = () => {
                     })}
                   </p>
                 </div>
-                <div >
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Motivo da Devolução</p>
                   <p className="font-medium">{cheque.motivoDevolucao}</p>
                 </div>
-                <div >
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Número da Operação</p>
                   <p className="font-medium">{cheque.numeroOperacao}</p>
                 </div>
-                <div >
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Quem Retirou</p>
                   <p className="font-medium">{cheque.quemRetirou}</p>
                 </div>
-                <div >
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Data da Retirada</p>
                   <p className="font-medium">{cheque.dataRetirada}</p>
                 </div>
-                <div >
+                <div>
                   <p className="text-sm font-medium text-muted-foreground">Local</p>
                   <p className="font-medium">{cheque.local}</p>
+                </div>
+                {/* Exibição do Campo Região */}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Região</p>
+                  <p className="font-medium">{cheque.regiao || 'Não definido'}</p>
                 </div>
               </div>
               {cheque.anexoUrl && (
                 <div className="mt-6">
                   <Button variant="outline" className="w-full">
                     <a href={cheque.anexoUrl} className='w-full flex justify-center gap-2 items-center' target='_blank' rel="noopener noreferrer">
-                      <Eye className=" h-4 w-4" />
+                      <Eye className="h-4 w-4" />
                       Visualizar Anexo
                     </a>
                   </Button>
@@ -569,13 +624,13 @@ const DetalhesCheque: React.FC = () => {
           </Card>
           <div className="mt-6">
             <h2 className="text-xl font-semibold mb-4">Log de Atividades</h2>
-            {/* Display log entries */}
+            {/* Exibir registros de log */}
             {cheque.log && cheque.log.length > 0 ? (
               <ScrollArea className="space-y-4 h-[300px]">
                 {cheque.log
                   .sort((a, b) => b.timestamp.seconds - a.timestamp.seconds) // Ordenar por data decrescente
                   .map((entry, index) => (
-                    <div key={index} className="w-1/2 border-b p-2">
+                    <div key={index} className="w-full border-b p-2">
                       <p className="text-xs text-gray-500 ">
                         Por {entry.user} às {format(entry.timestamp.toDate(), 'dd/MM/yyyy HH:mm:ss')}
                       </p>
