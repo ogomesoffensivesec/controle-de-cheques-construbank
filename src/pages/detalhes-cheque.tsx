@@ -118,8 +118,8 @@ const DetalhesCheque: React.FC = () => {
    * @returns URL do arquivo enviado.
    */
   const uploadAnexo = async (file: File): Promise<string> => {
-    if (!cheque || !cheque.id) return '';
-    const storageRefPath = ref(storage, `cheques/anexos/${cheque.id}/${file.name}`);
+    if (!cheque ) return '';
+    const storageRefPath = ref(storage, `cheques/anexos/${id}/${file.name}`);
     const snapshot = await uploadBytes(storageRefPath, file);
     const downloadURL = await getDownloadURL(snapshot.ref);
     return downloadURL;
