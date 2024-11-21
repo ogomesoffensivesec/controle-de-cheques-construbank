@@ -55,6 +55,7 @@ import {
  */
 const DetalhesCheque: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+
   const navigate = useNavigate();
   const [cheque, setCheque] = useState<Cheque | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -80,6 +81,7 @@ const DetalhesCheque: React.FC = () => {
           const data = chequeDoc.data() as Cheque;
           setCheque({
             ...data,
+            id: id,
             regiao: data.regiao || 'Não definido', // Definido como "Não definido" se ausente
           });
         } else {
@@ -127,9 +129,8 @@ const DetalhesCheque: React.FC = () => {
    * Função para atualizar as informações do cheque.
    */
   const handleUpdate = async () => {
-    if (!cheque || !cheque.id) return;
+    if (!cheque ) return;
     setIsUpdating(true);
-
     try {
       let anexoUrl = cheque.anexoUrl;
 
@@ -145,7 +146,7 @@ const DetalhesCheque: React.FC = () => {
       }
 
       // Atualiza o cheque no Firestore
-      const chequeDocRef = doc(db, 'cheques', cheque.id);
+      const chequeDocRef = doc(db, 'cheques', id as string);
 
       await updateDoc(chequeDocRef, {
         leitora: cheque.leitora,
@@ -180,7 +181,7 @@ const DetalhesCheque: React.FC = () => {
           const remessaData = remessaDoc.data() as any;
 
           // Encontra o índice do cheque na remessa
-          const chequeIndex = remessaData.cheques.findIndex((c: Cheque) => c.id === cheque.id);
+          const chequeIndex = remessaData.cheques.findIndex((c: Cheque) => c.id === id);
           if (chequeIndex === -1) {
             throw new Error('Cheque não encontrado na remessa.');
           }
@@ -230,7 +231,7 @@ const DetalhesCheque: React.FC = () => {
    * Função para excluir o cheque.
    */
   const handleDelete = async () => {
-    if (!cheque || !cheque.id) return;
+    if (!cheque ) return;
     if (!window.confirm('Tem certeza de que deseja excluir este cheque?')) return;
 
     setIsDeleting(true);
@@ -242,7 +243,7 @@ const DetalhesCheque: React.FC = () => {
         await deleteObject(anexoRef);
       }
 
-      const chequeDocRef = doc(db, 'cheques', cheque.id);
+      const chequeDocRef = doc(db, 'cheques', id as string);
       await deleteDoc(chequeDocRef);
 
       // Se o cheque estiver associado a uma remessa, remove-o da remessa
@@ -260,7 +261,7 @@ const DetalhesCheque: React.FC = () => {
           const remessaData = remessaDoc.data() as any;
 
           // Filtra o cheque a ser removido
-          remessaData.cheques = remessaData.cheques.filter((c: Cheque) => c.id !== cheque.id);
+          remessaData.cheques = remessaData.cheques.filter((c: Cheque) => c.id !== id);
 
           // Adiciona um log na remessa
           if (!remessaData.log) {
@@ -346,7 +347,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.leitora}
                           onChange={(e) => formatarLeitora(e)}
                           placeholder="Leitora"
-                          required
+                          
                         />
                       </div>
                       {/* Campo Número do Cheque */}
@@ -358,7 +359,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.numeroCheque}
                           onChange={(e) => handleChange('numeroCheque', e.target.value)}
                           placeholder="Número do Cheque"
-                          required
+                          
                         />
                       </div>
                       {/* Campo Nome */}
@@ -373,7 +374,7 @@ const DetalhesCheque: React.FC = () => {
                             handleChange('nome', e.target.value);
                           }}
                           placeholder="Nome"
-                          required
+                          
                         />
                       </div>
                       {/* Campo CPF/CNPJ */}
@@ -385,7 +386,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.cpf}
                           onChange={(e) => handleChange('cpf', e.target.value)}
                           placeholder="CPF/CNPJ"
-                          required
+                          
                         />
                       </div>
                       {/* Campo Valor */}
@@ -397,7 +398,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.valor}
                           onChange={(e) => handleChange('valor', Number(e.target.value))}
                           placeholder="Valor"
-                          required
+                          
                         />
                       </div>
                       {/* Campo Motivo da Devolução */}
@@ -450,7 +451,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.banco}
                           onChange={(e) => handleChange('banco', e.target.value)}
                           placeholder="Banco"
-                          required
+                          
                         />
                       </div>
                       {/* Campo Vencimento */}
@@ -461,7 +462,7 @@ const DetalhesCheque: React.FC = () => {
                           id="vencimento"
                           value={cheque.vencimento}
                           onChange={(e) => handleChange('vencimento', e.target.value)}
-                          required
+                          
                         />
                       </div>
                       {/* Campo Região */}
@@ -473,7 +474,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.regiao}
                           onChange={(e) => handleChange('regiao', e.target.value)}
                           placeholder="Região"
-                          required
+                          
                         />
                       </div>
                       {/* Campo Local */}
@@ -485,7 +486,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.local}
                           onChange={(e) => handleChange('local', e.target.value)}
                           placeholder="Local"
-                          required
+                          
                         />
                       </div>
                       {/* Campo Anexo do Cheque */}
@@ -525,7 +526,6 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.quemRetirou}
                           onChange={(e) => handleChange('quemRetirou', e.target.value)}
                           placeholder="Nome do responsável"
-                          required
                         />
                       </div>
                       {/* Campo Data de Retirada */}
@@ -536,7 +536,6 @@ const DetalhesCheque: React.FC = () => {
                           id="dataRetirada"
                           value={cheque.dataRetirada}
                           onChange={(e) => handleChange('dataRetirada', e.target.value)}
-                          required
                         />
                       </div>
                       {/* Botões de ação */}
