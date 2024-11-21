@@ -129,25 +129,42 @@ const DetalhesCheque: React.FC = () => {
    * Função para atualizar as informações do cheque.
    */
   const handleUpdate = async () => {
-    if (!cheque ) return;
+    if (!cheque) {
+      console.log("Nenhum cheque fornecido.");
+      return;
+    }
+  
     setIsUpdating(true);
+    console.log("Iniciando atualização do cheque...", { cheque });
+  
     try {
       let anexoUrl = cheque.anexoUrl;
-
+      console.log("URL inicial do anexo:", anexoUrl);
+  
       // Verifica se um novo arquivo foi selecionado
       if (cheque.anexoFile) {
+        console.log("Novo arquivo de anexo detectado:", cheque.anexoFile);
+  
         // Deleta o anexo anterior, se existir
         if (cheque.anexoUrl) {
+          console.log("Deletando anexo anterior:", cheque.anexoUrl);
           const previousAnexoRef = ref(storage, cheque.anexoUrl);
           await deleteObject(previousAnexoRef);
+          console.log("Anexo anterior deletado com sucesso.");
         }
+  
         // Faz o upload do novo anexo
         anexoUrl = await uploadAnexo(cheque.anexoFile);
+        console.log("Novo anexo carregado com sucesso:", anexoUrl);
       }
-
+  
       // Atualiza o cheque no Firestore
-      const chequeDocRef = doc(db, 'cheques', id as string);
-
+      const chequeDocRef = doc(db, "cheques", id as string);
+      console.log("Atualizando cheque no Firestore:", {
+        ...cheque,
+        anexoUrl,
+      });
+  
       await updateDoc(chequeDocRef, {
         leitora: cheque.leitora,
         numeroCheque: cheque.numeroCheque,
@@ -159,34 +176,34 @@ const DetalhesCheque: React.FC = () => {
         anexoUrl,
         quemRetirou: cheque.quemRetirou,
         dataRetirada: cheque.dataRetirada,
-        regiao: cheque.regiao, // Inclusão do campo Região
+        regiao: cheque.regiao,
         log: arrayUnion({
           timestamp: Timestamp.now(),
-          message: 'Cheque atualizado',
-          user: currentUser?.displayName || currentUser?.email || 'Usuário desconhecido',
-        }), // Atualizar log do cheque
+          message: "Cheque atualizado",
+          user: currentUser?.displayName || currentUser?.email || "Usuário desconhecido",
+        }),
       });
-
+      console.log("Cheque atualizado com sucesso no Firestore.");
+  
       // Verifica se o cheque está associado a uma remessa
       if (cheque.remessaId) {
-        const remessaDocRef = doc(db, 'remessas', cheque.remessaId);
-
-        // Executa uma transação para atualizar a remessa de forma atômica
+        console.log("Cheque associado a uma remessa. ID da remessa:", cheque.remessaId);
+        const remessaDocRef = doc(db, "remessas", cheque.remessaId);
+  
         await runTransaction(db, async (transaction) => {
           const remessaDoc = await transaction.get(remessaDocRef);
           if (!remessaDoc.exists()) {
-            throw new Error('Remessa não encontrada.');
+            throw new Error("Remessa não encontrada.");
           }
-
+  
           const remessaData = remessaDoc.data() as any;
-
-          // Encontra o índice do cheque na remessa
+          console.log("Dados da remessa antes da atualização:", remessaData);
+  
           const chequeIndex = remessaData.cheques.findIndex((c: Cheque) => c.id === id);
           if (chequeIndex === -1) {
-            throw new Error('Cheque não encontrado na remessa.');
+            throw new Error("Cheque não encontrado na remessa.");
           }
-
-          // Atualiza os campos do cheque na remessa
+  
           remessaData.cheques[chequeIndex] = {
             ...remessaData.cheques[chequeIndex],
             leitora: cheque.leitora,
@@ -199,33 +216,37 @@ const DetalhesCheque: React.FC = () => {
             anexoUrl: cheque.anexoUrl,
             quemRetirou: cheque.quemRetirou,
             dataRetirada: cheque.dataRetirada,
-            regiao: cheque.regiao, // Atualização do campo Região na remessa
+            regiao: cheque.regiao,
           };
-
-          // Adiciona um log na remessa
+  
+          console.log("Cheque atualizado dentro da remessa:", remessaData.cheques[chequeIndex]);
+  
           if (!remessaData.log) {
             remessaData.log = [];
           }
           remessaData.log.push({
             timestamp: Timestamp.now(),
             message: `Cheque ${cheque.numeroCheque} atualizado`,
-            user: currentUser?.displayName || currentUser?.email || 'Usuário desconhecido',
+            user: currentUser?.displayName || currentUser?.email || "Usuário desconhecido",
           });
-
-          // Atualiza a remessa no Firestore
+  
           transaction.update(remessaDocRef, remessaData);
+          console.log("Remessa atualizada com sucesso no Firestore.");
         });
       }
-
-      toast.success('Cheque atualizado com sucesso!');
+  
+      toast.success("Cheque atualizado com sucesso!");
       setIsSheetOpen(false);
+      console.log("Processo concluído com sucesso.");
     } catch (error: any) {
-      console.error('Erro ao atualizar cheque:', error);
-      toast.error(error.message || 'Ocorreu um erro ao atualizar o cheque.');
+      console.error("Erro ao atualizar cheque:", error);
+      toast.error(error.message || "Ocorreu um erro ao atualizar o cheque.");
     } finally {
+      console.log("Finalizando processo de atualização.");
       setIsUpdating(false);
     }
   };
+  
 
   /**
    * Função para excluir o cheque.
