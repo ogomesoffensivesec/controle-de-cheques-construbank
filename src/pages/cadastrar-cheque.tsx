@@ -389,7 +389,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.leitora}
               onChange={(e) => formatarLeitora(e)}
               placeholder="Leitora"
-              required
+              
             />
           </div>
           {/* Campo Número do Cheque */}
@@ -401,7 +401,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.numeroCheque}
               onChange={(e) => handleChange('numeroCheque', e.target.value)}
               placeholder="Número do Cheque"
-              required
+              
             />
           </div>
           {/* Campo Nome */}
@@ -416,7 +416,7 @@ const NovoCheque: React.FC = () => {
                 handleChange('nome', e.target.value);
               }}
               placeholder="Nome"
-              required
+              
             />
           </div>
           {/* Campo CPF/CNPJ */}
@@ -428,7 +428,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.cpf}
               onChange={(e) => handleChange('cpf', e.target.value)}
               placeholder="CPF/CNPJ"
-              required
+              
             />
           </div>
           {/* Campo Valor */}
@@ -440,7 +440,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.valor}
               onChange={(e) => handleChange('valor', Number(e.target.value))}
               placeholder="Valor"
-              required
+              
             />
           </div>
           {/* Campo Motivo da Devolução */}
@@ -493,7 +493,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.banco}
               onChange={(e) => handleChange('banco', e.target.value)}
               placeholder="Banco"
-              required
+              
             />
           </div>
           {/* Campo Vencimento */}
@@ -504,7 +504,7 @@ const NovoCheque: React.FC = () => {
               id="vencimento"
               value={chequeAtual.vencimento}
               onChange={(e) => handleChange('vencimento', e.target.value)}
-              required
+              
             />
           </div>
           {/* Campo Região */}
@@ -516,7 +516,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.regiao}
               onChange={(e) => handleChange('regiao', e.target.value)}
               placeholder="Região"
-              required
+              
             />
           </div>
           {/* Campo Local */}
@@ -526,7 +526,7 @@ const NovoCheque: React.FC = () => {
               disabled
               value={chequeAtual.local}
               onValueChange={(value) => handleChange('local', value)}
-              required
+              
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o local" />
@@ -572,7 +572,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.quemRetirou}
               onChange={(e) => handleChange('quemRetirou', e.target.value)}
               placeholder="Nome do responsável"
-              required
+              
             />
           </div>
           {/* Campo Data de Retirada */}
@@ -583,7 +583,7 @@ const NovoCheque: React.FC = () => {
               id="dataRetirada"
               value={chequeAtual.dataRetirada}
               onChange={(e) => handleChange('dataRetirada', e.target.value)}
-              required
+              
             />
           </div>
         </div>
