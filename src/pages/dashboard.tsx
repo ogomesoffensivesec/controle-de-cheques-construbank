@@ -1,5 +1,3 @@
-// src/pages/DashboardHome.tsx
-
 "use client";
 
 import * as React from "react";
@@ -54,6 +52,8 @@ import { Label } from "@/components/ui/label";
 
 import { Cheque } from "@/interfaces/cheque";
 import { Remessa } from "@/interfaces/remessa";
+import BlurFade from "@/components/ui/blur-fade";
+import { useAuth } from "@/contexts/auth-context";
 
 const DashboardHome: React.FC = () => {
   const [cheques, setCheques] = React.useState<Cheque[]>([]);
@@ -62,7 +62,7 @@ const DashboardHome: React.FC = () => {
   const [username, setUsername] = React.useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [loading, setLoading] = React.useState<boolean>(false);
-
+  const { currentUser }: any = useAuth()
   // Função para buscar cheques e remessas do Firestore
   React.useEffect(() => {
     const fetchCheques = async () => {
@@ -80,6 +80,14 @@ const DashboardHome: React.FC = () => {
                 : new Date(data.createdAt || Date.now()),
           } as Cheque;
         });
+        if (
+          currentUser?.isClient
+        ) {
+          const filterCheques = chequesData.filter(cheque => cheque.clientId === currentUser.clientId)
+          console.log(filterCheques);
+          setCheques(filterCheques)
+          return
+        }
         setCheques(chequesData);
       } catch (error) {
         console.error("Erro ao buscar cheques:", error);
@@ -120,7 +128,6 @@ const DashboardHome: React.FC = () => {
         }
       });
     };
-
     fetchCheques();
     fetchRemessas();
     getUser();
@@ -197,6 +204,38 @@ const DashboardHome: React.FC = () => {
     }
   };
 
+
+  const cards = [
+    {
+      title: 'Total de Cheques',
+      icon: <ClipboardList className="h-4 w-4 text-muted-foreground" />,
+      value: cheques.length,
+      description: 'Total de cheques cadastrados',
+    },
+    {
+      title: 'Cheques no Escritório',
+      icon: <Building className="h-4 w-4 text-muted-foreground" />,
+      value: cheques.filter(cheque => cheque.local.toLowerCase() === 'escritório').length,
+      description: 'Cheques no escritório',
+    },
+    {
+      title: 'Cheques em Transporte',
+      icon: <Truck className="h-4 w-4 text-muted-foreground" />,
+      value: cheques.filter(cheque => cheque.local.toLowerCase() === 'transporte').length,
+      description: 'Cheques em transporte',
+    },
+    ...(currentUser.isClient
+      ? []
+      : [
+          {
+            title: 'Total de Remessas',
+            icon: <FileText className="h-4 w-4 text-muted-foreground" />,
+            value: remessas.length,
+            description: 'Total de remessas criadas',
+          },
+        ]),
+  ];
+  
   return (
     !isLoading && (
       <div className="flex-1 space-y-4 px-4 ">
@@ -227,246 +266,201 @@ const DashboardHome: React.FC = () => {
         </Dialog>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total de Cheques
-              </CardTitle>
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{cheques.length}</div>
-              <p className="text-xs text-muted-foreground">
-                Total de cheques cadastrados
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Cheques no Escritório
-              </CardTitle>
-              <Building className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {
-                  cheques.filter(
-                    (cheque) =>
-                      cheque.local.toLowerCase() === "escritório"
-                  ).length
-                }
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Cheques no escritório
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Cheques em Transporte
-              </CardTitle>
-              <Truck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {
-                  cheques.filter(
-                    (cheque) => cheque.local.toLowerCase() === "transporte"
-                  ).length
-                }
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Cheques em transporte
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total de Remessas
-              </CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{remessas.length}</div>
-              <p className="text-xs text-muted-foreground">
-                Total de remessas criadas
-              </p>
-            </CardContent>
-          </Card>
+          {cards.map((card, index) => (
+            <BlurFade delay={0.15 * index} inView key={card.description}>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                  {card.icon}
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{card.value}</div>
+                  <p className="text-xs text-muted-foreground">{card.description}</p>
+                </CardContent>
+              </Card>
+            </BlurFade>
+          ))}
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
-            <CardHeader>
-              <CardTitle>Cheques Cadastrados por Mês</CardTitle>
-              <CardDescription>
-                Total de cheques cadastrados por mês.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pl-2">
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={chartData}>
-                  <XAxis
-                    dataKey="name"
-                    stroke="#888888"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    stroke="#888888"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    allowDecimals={false}
-                  />
-                  <Tooltip
-                    formatter={(value: number) => `${value} cheques`}
-                  />
-                  <Legend />
-                  <Bar
-                    dataKey="total"
-                    fill="#4ade80"
-                    name="Total de Cheques"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-          <Card className="col-span-3">
-            <CardHeader>
-              <CardTitle>Cheques por Local</CardTitle>
-              <CardDescription>
-                Distribuição dos cheques por local.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Local</TableHead>
-                    <TableHead>Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(chequesByLocal).map(([local, count]) => (
-                    <TableRow key={local}>
-                      <TableCell className="capitalize">{local}</TableCell>
-                      <TableCell>{count}</TableCell>
+          <BlurFade delay={0.40} inView className="col-span-4">
+            <Card className="col-span-4">
+              <CardHeader>
+                <CardTitle>Cheques Cadastrados por Mês</CardTitle>
+                <CardDescription>
+                  Total de cheques cadastrados por mês.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pl-2">
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={chartData}>
+                    <XAxis
+                      dataKey="name"
+                      stroke="#888888"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      stroke="#888888"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => `${value} cheques`}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="total"
+                      fill="#4ade80"
+                      name="Total de Cheques"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </BlurFade>
+          <BlurFade className="col-span-3 " inView delay={0.4}>
+            <Card className="col-span-3 h-[460px]">
+              <CardHeader>
+                <CardTitle>Cheques por Local</CardTitle>
+                <CardDescription>
+                  Distribuição dos cheques por local.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Local</TableHead>
+                      <TableHead>Total</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
-            <CardHeader>
-              <CardTitle>Cheques Recentes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Número do Cheque</TableHead>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Banco</TableHead>
-                    <TableHead>Local</TableHead>
-                    <TableHead>Data</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cheques
-                    .filter(cheque => cheque.createdAt)
-                    .filter(cheque => cheque.createdAt)
-                    .sort(
-                      (a, b) => {
-                        if (!a.createdAt || !b.createdAt) return 0;
-                        return b.createdAt.getTime() - a.createdAt.getTime();
-                      }
-                    )
-                    .slice(0, 5)
-                    .map((cheque) => (
-                      <TableRow key={cheque.id}>
-                        <TableCell>{cheque.numeroCheque}</TableCell>
-                        <TableCell>{cheque.nome}</TableCell>
-                        <TableCell>{cheque.banco}</TableCell>
-                        <TableCell
-                          className={`capitalize ${getStatusColor(
-                            cheque.local
-                          )}`}
-                        >
-                          {cheque.local}
-                        </TableCell>
-                        <TableCell>
-                          {cheque.createdAt ? cheque.createdAt.toLocaleDateString("pt-BR") : 'N/A'}
-                        </TableCell>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(chequesByLocal).map(([local, count]) => (
+                      <TableRow key={local}>
+                        <TableCell className="capitalize">{local}</TableCell>
+                        <TableCell>{count}</TableCell>
                       </TableRow>
                     ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-          <Card className="col-span-3">
-            <CardHeader>
-              <CardTitle>Estatísticas Gerais</CardTitle>
-              <CardDescription>Visão geral dos cheques.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <ClipboardList className="h-6 w-6 text-green-500" />
-                  <span className="text-lg font-semibold">
-                    {cheques.length}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    Cheques Totais
-                  </span>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </BlurFade>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <BlurFade className="col-span-4 " inView delay={0.8}>
+            <Card className="col-span-4 ">
+              <CardHeader>
+                <CardTitle>Cheques Recentes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Número do Cheque</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Banco</TableHead>
+                      <TableHead>Local</TableHead>
+                      <TableHead>Data</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cheques
+                      .filter(cheque => cheque.createdAt)
+                      .filter(cheque => cheque.createdAt)
+                      .sort(
+                        (a, b) => {
+                          if (!a.createdAt || !b.createdAt) return 0;
+                          return b.createdAt.getTime() - a.createdAt.getTime();
+                        }
+                      )
+                      .slice(0, 5)
+                      .map((cheque) => (
+                        <TableRow key={cheque.id}>
+                          <TableCell>{cheque.numeroCheque}</TableCell>
+                          <TableCell>{cheque.nome}</TableCell>
+                          <TableCell>{cheque.banco}</TableCell>
+                          <TableCell
+                            className={`capitalize ${getStatusColor(
+                              cheque.local
+                            )}`}
+                          >
+                            {cheque.local}
+                          </TableCell>
+                          <TableCell>
+                            {cheque.createdAt ? cheque.createdAt.toLocaleDateString("pt-BR") : 'N/A'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </BlurFade>
+          <BlurFade className="col-span-3 " inView delay={0.8}>
+
+            <Card className="col-span-3  h-[315px]">
+              <CardHeader>
+                <CardTitle>Estatísticas Gerais</CardTitle>
+                <CardDescription>Visão geral dos cheques.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <ClipboardList className="h-6 w-6 text-green-500" />
+                    <span className="text-lg font-semibold">
+                      {cheques.length}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Cheques Totais
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Truck className="h-6 w-6 text-yellow-500" />
+                    <span className="text-lg font-semibold">
+                      {
+                        cheques.filter(
+                          (cheque) =>
+                            cheque.local.toLowerCase() === "transporte"
+                        ).length
+                      }
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Cheques em Transporte
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Building className="h-6 w-6 text-blue-500" />
+                    <span className="text-lg font-semibold">
+                      {
+                        cheques.filter(
+                          (cheque) =>
+                            cheque.local.toLowerCase() === "escritório"
+                        ).length
+                      }
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Cheques no Escritório
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <FileText className="h-6 w-6 text-purple-500" />
+                    <span className="text-lg font-semibold">
+                      {remessas.length}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      Remessas Totais
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Truck className="h-6 w-6 text-yellow-500" />
-                  <span className="text-lg font-semibold">
-                    {
-                      cheques.filter(
-                        (cheque) =>
-                          cheque.local.toLowerCase() === "transporte"
-                      ).length
-                    }
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    Cheques em Transporte
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Building className="h-6 w-6 text-blue-500" />
-                  <span className="text-lg font-semibold">
-                    {
-                      cheques.filter(
-                        (cheque) =>
-                          cheque.local.toLowerCase() === "escritório"
-                      ).length
-                    }
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    Cheques no Escritório
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <FileText className="h-6 w-6 text-purple-500" />
-                  <span className="text-lg font-semibold">
-                    {remessas.length}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    Remessas Totais
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </BlurFade>
+
         </div>
       </div>
     )

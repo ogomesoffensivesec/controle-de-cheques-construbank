@@ -3,18 +3,18 @@ import { useAuth } from '@/contexts/auth-context';
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 
-interface PrivateRouteProps {
+interface PublicRouteProps {
   children: JSX.Element;
 }
 
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
+const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
   const { currentUser, loading } = useAuth();
   if (loading) {
     // Opcional: Exibir um spinner ou indicador de carregamento
     return <div>Carregando...</div>;
   }
 
-  return currentUser ? children : <Navigate to="/login" replace />;
+  return !currentUser ? children : <Navigate to="/" replace />;
 };
 
-export default PrivateRoute;
+export default PublicRoute;

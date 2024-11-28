@@ -9,61 +9,97 @@ import {
   signInWithEmailAndPassword,
   setPersistence,
   browserLocalPersistence,
-  browserSessionPersistence
+  browserSessionPersistence,
+  createUserWithEmailAndPassword
 } from 'firebase/auth';
-import { auth } from '@/db/firebase';
+import { auth, db } from '@/db/firebase';
 import { useNavigate, Link } from 'react-router-dom';
 import LogoConstrubank from '@/assets/logo.png'
+import { collection, getDocs } from 'firebase/firestore';
+import { Cliente } from '@/interfaces/cliente';
+import { toast, ToastContainer } from 'react-toastify';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [firstAccess, setFirstAccess] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  // Função para lidar com o envio do formulário de login
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null); // Resetar erros anteriores
-
+    setError(null);
+  
     try {
-      // Definir a persistência com base na opção "Remember me"
-      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
-
-      // Tentar fazer o login com email e senha
-      await signInWithEmailAndPassword(auth, email, password);
-
-      // Redirecionar para a página inicial após o login bem-sucedido
-      navigate("/");
+      const clientesCollectionRef = collection(db, 'clientes');
+      const clientesSnapshot = await getDocs(clientesCollectionRef);
+      const clientesList = await clientesSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Cliente[];
+  
+      const userCliente = clientesList.find(client => client.email === email);
+  
+      if (firstAccess) {
+        if (!userCliente) {
+          toast.error('Usuário não cadastrado como cliente');
+          return;
+        }
+  
+        console.log('Primeiro acesso do cliente');
+        await createUserWithEmailAndPassword(auth, userCliente.email, userCliente.senha);
+        await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+        await signInWithEmailAndPassword(auth, userCliente.email, userCliente.senha);
+        navigate("/");
+        return;
+      }
+  
+      if (userCliente) {
+        console.log('Usuário é cliente');
+        await signInWithEmailAndPassword(auth, userCliente.email, userCliente.senha);
+      } else {
+        console.log('Usuário não é cliente, tentando logar como membro');
+        await signInWithEmailAndPassword(auth, email, password);
+        navigate("/");
+        return
+      }
+  
+   
     } catch (error: any) {
       console.error("Erro ao fazer login:", error);
-
-      // Definir mensagens de erro amigáveis ao usuário
-      switch (error.code) {
-        case 'auth/invalid-email':
-          setError('Endereço de email inválido.');
-          break;
-        case 'auth/user-disabled':
-          setError('Este usuário está desativado.');
-          break;
-        case 'auth/user-not-found':
-          setError('Usuário não encontrado.');
-          break;
-        case 'auth/wrong-password':
-          setError('Senha incorreta.');
-          break;
-        default:
-          setError('Falha no login. Por favor, tente novamente.');
-      }
+      handleAuthError(error);
     } finally {
       setLoading(false);
     }
   };
+  
+  const handleAuthError = (error: any) => {
+    switch (error.code) {
+      case 'auth/invalid-email':
+        setError('Endereço de email inválido.');
+        break;
+      case 'auth/user-disabled':
+        setError('Este usuário está desativado.');
+        break;
+      case 'auth/user-not-found':
+        setError('Usuário não encontrado.');
+        break;
+      case 'auth/wrong-password':
+        setError('Senha incorreta.');
+        break;
+      default:
+        setError('Falha no login. Por favor, tente novamente.');
+    }
+  };
+  
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br bg-zinc-200 dark:from-zinc-800 dark:to-zinc-900 transition-colors duration-500 py-12 px-4 sm:px-6 lg:px-8">
+      <ToastContainer />
       <Card className="max-w-md w-full  p-4 shadow-xl transition-shadow duration-300 hover:shadow-2xl dark:bg-zinc-800">
         <CardHeader>
           <CardTitle className="text-3xl font-extrabold tracking-wide text-indigo-900 dark:text-white">
@@ -130,14 +166,25 @@ export default function LoginPage() {
                   Lembrar-me
                 </Label>
               </div>
-
-              <div className="text-sm">
-                <Link to="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors duration-200">
-                  Esqueceu sua senha?
-                </Link>
+              <div className="flex items-center">
+                <Checkbox
+                  id="remember-me"
+                  name="remember-me"
+                  checked={firstAccess}
+                  onCheckedChange={(checked) => setFirstAccess(checked as boolean)}
+                />
+                <Label htmlFor="remember-me" className="ml-2 block text-sm text-zinc-900 dark:text-zinc-300">
+                  Primeiro Acesso
+                </Label>
               </div>
+
             </div>
 
+            <div className="text-sm flex justify-center">
+              <Link to="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors duration-200">
+                Esqueceu sua senha?
+              </Link>
+            </div>
             <div>
               <Button
                 type="submit"

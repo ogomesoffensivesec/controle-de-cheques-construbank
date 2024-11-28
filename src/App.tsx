@@ -4,6 +4,9 @@ import { Suspense, lazy } from 'react';
 import PrivateRoute from './components/routes/private-route';
 import PrivateLayout from './components/layout/private-layout';
 import { AuthProvider } from './contexts/auth-context';
+import CadastroCliente from './pages/cadastro-cliente';
+import VisualizarClientes from './pages/visualizar-cliente';
+import PublicRoute from './components/routes/public.route';
 
 // Importações Dinâmicas
 const DashboardHome = lazy(() => import('./pages/dashboard'));
@@ -25,7 +28,9 @@ function App() {
         <Suspense fallback={<div>Carregando...</div>}>
           <Routes>
             {/* Rota de Login */}
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<PublicRoute>
+              <Login />
+            </PublicRoute>} />
 
             {/* Rotas Privadas */}
             <Route
@@ -43,7 +48,8 @@ function App() {
               <Route path="cheques" element={<Cheques />} />
               <Route path="cheques/novo" element={<NovoCheque />} />
               <Route path="cheques/:id" element={<DetalhesCheque />} />
-
+              <Route path='clientes' element={<VisualizarClientes/>} />
+              <Route path='clientes/novo-cliente' element={<CadastroCliente />} />
               {/* Rotas de Remessas */}
               <Route path="remessas" element={<Remessas />} />
               <Route path="remessas/nova-remessa" element={<NovaRemessa />} />

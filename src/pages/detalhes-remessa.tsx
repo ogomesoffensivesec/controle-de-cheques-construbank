@@ -44,13 +44,13 @@ import { classificacoes } from '@/data/cheques';
 
 const DetalhesRemessa: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { currentUser }: any = useAuth();
   const navigate = useNavigate();
   const [remessa, setRemessa] = useState<Remessa | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [documentoAssinadoFile, setDocumentoAssinadoFile] = useState<File | null>(null);
   const [recebidoPor, setRecebidoPor] = useState<string>('');
-  const { currentUser } = useAuth(); // Obter o usuário atual
 
   // Estados para adicionar novos cheques
   const [cheques, setCheques] = useState<Cheque[]>([]);
@@ -70,11 +70,16 @@ const DetalhesRemessa: React.FC = () => {
     banco: '',
     vencimento: '',
     regiao: '', // Campo Região
-    log: []
+    log: [],
+    clientId: ''
+
   });
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   useEffect(() => {
+    if (currentUser.isClient) {
+      navigate('/')
+    }
     const fetchRemessa = async () => {
       if (!id) return;
 
@@ -221,7 +226,8 @@ const DetalhesRemessa: React.FC = () => {
       banco: '',
       vencimento: '',
       regiao: '',
-      log: []
+      log: [],
+      clientId: ''
     });
   };
 
@@ -326,6 +332,7 @@ const DetalhesRemessa: React.FC = () => {
                 cpf: cheque.cpf,
                 quemRetirou: cheque.quemRetirou,
                 dataRetirada: cheque.dataRetirada,
+                clientId: cheque.clientId,
                 local: `Remessa ${remessa.protocolo}`,
               }),
             };

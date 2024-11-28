@@ -1,6 +1,6 @@
 // src/components/ui/app-sidebar.jsx
 import { useState, useEffect } from 'react';
-import { Home, Settings, LogOut, BanknoteIcon, RotateCw } from "lucide-react";
+import { Home, Settings, LogOut, BanknoteIcon, RotateCw, UsersIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -14,6 +14,7 @@ import {
 import { Link } from 'react-router-dom';
 import { Switch } from './switch';
 import { Label } from './label';
+import { useAuth } from '@/contexts/auth-context';
 
 // Itens do menu, sem a opção "Sair"
 const menuItems = [
@@ -27,17 +28,26 @@ const menuItems = [
     url: '/cheques',
     icon: BanknoteIcon
   },
+];
+
+const adminMenuItems = [
+ 
   {
     title: "Remessas",
     url: '/remessas',
     icon: RotateCw
   },
   {
+    title: "Clientes",
+    url: "/clientes",
+    icon: UsersIcon
+  },
+  {
     title: "Configurações",
     url: "/settings",
     icon: Settings,
   },
-];
+]
 
 const footerItems = [
   {
@@ -49,7 +59,7 @@ const footerItems = [
 ];
 
 export function AppSidebar() {
-  // Estado para gerenciar o tema
+  const { currentUser }: any = useAuth()
   const [theme, setTheme] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     return savedTheme ? savedTheme : 'light';
@@ -73,16 +83,31 @@ export function AppSidebar() {
           <SidebarGroupLabel>Aplicação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link to={item.url} className="flex items-center p-2">
-                      <item.icon size={20} />
-                      <span className="ml-2">{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {
+                menuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <Link to={item.url} className="flex items-center p-2">
+                        <item.icon size={20} />
+                        <span className="ml-2">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              }
+              {
+                currentUser && !currentUser.isClient && adminMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <Link to={item.url} className="flex items-center p-2">
+                        <item.icon size={20} />
+                        <span className="ml-2">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))
+              }
+
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

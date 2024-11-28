@@ -35,11 +35,12 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 // Importações adicionadas
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useAuth } from '@/contexts/auth-context';
 
 const Cheques: React.FC = () => {
   const [cheques, setCheques] = useState<Cheque[]>([]);
+  const { currentUser }: any = useAuth()
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
   // Estados para o React Table
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
@@ -67,6 +68,7 @@ const Cheques: React.FC = () => {
    * Busca os cheques no Firestore.
    */
   useEffect(() => {
+
     const fetchCheques = async () => {
       setIsLoading(true);
       try {
@@ -81,6 +83,11 @@ const Cheques: React.FC = () => {
           ...cheque,
           regiao: cheque.regiao || 'Não definido',
         }));
+        if (currentUser.isClient) {
+          const chequesFiltrados = chequesComRegiao.filter(chequeFiltrado => chequeFiltrado.clientId === currentUser.clientId)
+          setCheques(chequesFiltrados)
+          return
+        }
         setCheques(chequesComRegiao);
       } catch (error) {
         console.error('Erro ao buscar cheques:', error);
@@ -227,9 +234,73 @@ const Cheques: React.FC = () => {
    * Agora inclui a Região no relatório.
    */
   const exportarRelatorioPDF = () => {
-    // Filtra os cheques que estão no escritório
-    const chequesNoEscritorio = cheques.filter((cheque) => cheque.local === 'Escritório');
+    const dateObj = new Date();
+    const month = dateObj.getUTCMonth() + 1; // months from 1-12
+    const day = dateObj.getUTCDate();
+    const year = dateObj.getUTCFullYear();
 
+    const newDate = day + "_" + month + "_" + year;
+    if (currentUser.isClient) {
+      if (cheques.length === 0) {
+        toast.error('Não há cheques para exportar um relatório.');
+      }
+      const doc = new jsPDF();
+
+      // Título do relatório
+      doc.setFontSize(18);
+      doc.text('Relatório de Cheques', 14, 22);
+
+      // Data de geração do relatório
+      doc.setFontSize(12);
+      doc.text(`Data: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 14, 30);
+
+      // Tabela com os cheques
+      const tableColumn = ["Número do Cheque", "Banco", "Região", "Vencimento", "Nome", "Valor"];
+      const tableRows: any = [];
+
+      cheques.forEach((cheque) => {
+        const vencimento = cheque.vencimento
+          ? format(new Date(cheque.vencimento), 'dd/MM/yyyy')
+          : '';
+        const valorFormatado = cheque.valor.toLocaleString('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+        });
+        const chequeData = [
+          cheque.numeroCheque,
+          cheque.banco,
+          cheque.regiao || 'Não definido', // Inclusão do campo Região com valor padrão
+          vencimento,
+          cheque.nome,
+          valorFormatado,
+        ];
+        tableRows.push(chequeData);
+      });
+
+      autoTable(doc, {
+        startY: 40,
+        head: [tableColumn],
+        body: tableRows,
+      });
+
+      // Total de cheques e valor total
+      const valorTotal = cheques.reduce((total, cheque) => total + cheque.valor, 0);
+      doc.setFontSize(12);
+      doc.text(`Total de Cheques: ${cheques.length}`, 14, doc.lastAutoTable.finalY + 10);
+      doc.text(
+        `Valor Total: ${valorTotal.toLocaleString('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+        })}`,
+        14,
+        doc.lastAutoTable.finalY + 16
+      );
+
+
+      doc.save(`Relatorio_Cheques_${newDate}`)
+      return
+    }
+    const chequesNoEscritorio = cheques.filter((cheque) => cheque.local === 'Escritório');
     if (chequesNoEscritorio.length === 0) {
       toast.error('Não há cheques no escritório para exportar.');
       return;
@@ -288,7 +359,7 @@ const Cheques: React.FC = () => {
     );
 
     // Salva o PDF
-    doc.save('Relatorio_Cheques_Escritorio.pdf');
+    doc.save(`Relatorio_Cheques_Escritorio_${newDate}.pdf`);
   };
 
   return (
@@ -300,9 +371,11 @@ const Cheques: React.FC = () => {
           <Button onClick={exportarRelatorioPDF}>
             Exportar Relatório
           </Button>
-          <Button onClick={() => navigate('/cheques/novo')}>
-            Cadastrar Cheques
-          </Button>
+          {
+            !currentUser.isClient && <Button onClick={() => navigate('/cheques/novo')}>
+              Cadastrar Cheques
+            </Button>
+          }
         </div>
       </div>
       {isLoading ? (
@@ -395,9 +468,9 @@ const Cheques: React.FC = () => {
                             {header.isPlaceholder
                               ? null
                               : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
                           </TableHead>
                         ))}
                       </TableRow>

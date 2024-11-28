@@ -27,13 +27,19 @@ import {
   TableBody,
   TableCell,
 } from '@/components/ui/table';
+import { useAuth } from '@/contexts/auth-context';
 
 const Remessas: React.FC = () => {
   const [remessas, setRemessas] = useState<Remessa[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const navigate = useNavigate();
+  const { currentUser }: any = useAuth();
+
 
   useEffect(() => {
+    if (currentUser.isClient) {
+      navigate('/')
+    }
     const fetchRemessas = async () => {
       setIsLoading(true);
       try {

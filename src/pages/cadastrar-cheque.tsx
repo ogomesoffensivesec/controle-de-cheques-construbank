@@ -1,13 +1,13 @@
 // src/pages/NovoCheque.tsx
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { storage, db } from '@/db/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, getDocs } from 'firebase/firestore';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Trash, Edit2 } from 'lucide-react';
@@ -30,6 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Cliente } from '@/interfaces/cliente';
 
 // Componente de Paginação
 const Pagination: React.FC<{
@@ -62,7 +63,8 @@ const Pagination: React.FC<{
 
 const NovoCheque: React.FC = () => {
   const [cheques, setCheques] = useState<Cheque[]>([]);
-  const { currentUser } = useAuth();
+  const { currentUser }: any = useAuth();
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [chequeAtual, setChequeAtual] = useState<Cheque>({
     id: v4(),
     leitora: '',
@@ -79,7 +81,8 @@ const NovoCheque: React.FC = () => {
     banco: '',
     vencimento: '',
     regiao: '', // Novo campo Região adicionado aqui
-    log: []
+    log: [],
+    clientId: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -158,7 +161,8 @@ const NovoCheque: React.FC = () => {
       banco: '',
       vencimento: '',
       regiao: '', // Reset do campo Região
-      log: []
+      log: [],
+      clientId: ''
     });
 
     // Resetar a página para a primeira após adicionar/edit
@@ -206,11 +210,37 @@ const NovoCheque: React.FC = () => {
    * Função para lidar com a submissão do formulário.
    * @param e Evento de submissão do formulário.
    */
+
+
+  useEffect(() => {
+    if (currentUser.isClient) {
+      navigate('/')
+      return
+    }
+    const fetchClientes = async () => {
+
+      try {
+        const clientesCollectionRef = collection(db, 'clientes');
+        const clientesSnapshot = await getDocs(clientesCollectionRef);
+        const clientesList = await clientesSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Cliente[];
+        setClientes(clientesList);
+      } catch (error) {
+        console.error('Erro ao buscar cheques:', error);
+        toast.error('Ocorreu um erro ao buscar os cheques.');
+      }
+    };
+
+    fetchClientes();
+  }, []);
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setIsSubmitting(true);
-
     if (cheques.length === 0) {
       toast.error('Adicione pelo menos um cheque antes de salvar.');
       setIsSubmitting(false);
@@ -241,6 +271,7 @@ const NovoCheque: React.FC = () => {
           regiao: cheque.regiao, // Inclusão do campo Região no Firestore
           createdAt: Timestamp.now(),
           banco: cheque.banco,
+          clientId: cheque.clientId,
           vencimento: cheque.vencimento,
           log: [
             {
@@ -389,7 +420,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.leitora}
               onChange={(e) => formatarLeitora(e)}
               placeholder="Leitora"
-              
+
             />
           </div>
           {/* Campo Número do Cheque */}
@@ -401,7 +432,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.numeroCheque}
               onChange={(e) => handleChange('numeroCheque', e.target.value)}
               placeholder="Número do Cheque"
-              
+
             />
           </div>
           {/* Campo Nome */}
@@ -416,7 +447,7 @@ const NovoCheque: React.FC = () => {
                 handleChange('nome', e.target.value);
               }}
               placeholder="Nome"
-              
+
             />
           </div>
           {/* Campo CPF/CNPJ */}
@@ -428,7 +459,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.cpf}
               onChange={(e) => handleChange('cpf', e.target.value)}
               placeholder="CPF/CNPJ"
-              
+
             />
           </div>
           {/* Campo Valor */}
@@ -440,7 +471,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.valor}
               onChange={(e) => handleChange('valor', Number(e.target.value))}
               placeholder="Valor"
-              
+
             />
           </div>
           {/* Campo Motivo da Devolução */}
@@ -493,7 +524,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.banco}
               onChange={(e) => handleChange('banco', e.target.value)}
               placeholder="Banco"
-              
+
             />
           </div>
           {/* Campo Vencimento */}
@@ -504,7 +535,7 @@ const NovoCheque: React.FC = () => {
               id="vencimento"
               value={chequeAtual.vencimento}
               onChange={(e) => handleChange('vencimento', e.target.value)}
-              
+
             />
           </div>
           {/* Campo Região */}
@@ -516,7 +547,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.regiao}
               onChange={(e) => handleChange('regiao', e.target.value)}
               placeholder="Região"
-              
+
             />
           </div>
           {/* Campo Local */}
@@ -526,7 +557,7 @@ const NovoCheque: React.FC = () => {
               disabled
               value={chequeAtual.local}
               onValueChange={(value) => handleChange('local', value)}
-              
+
             >
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o local" />
@@ -572,7 +603,7 @@ const NovoCheque: React.FC = () => {
               value={chequeAtual.quemRetirou}
               onChange={(e) => handleChange('quemRetirou', e.target.value)}
               placeholder="Nome do responsável"
-              
+
             />
           </div>
           {/* Campo Data de Retirada */}
@@ -583,8 +614,27 @@ const NovoCheque: React.FC = () => {
               id="dataRetirada"
               value={chequeAtual.dataRetirada}
               onChange={(e) => handleChange('dataRetirada', e.target.value)}
-              
+
             />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="clientId">Cliente *</Label>
+            <Select
+              onValueChange={(value) => handleChange("clientId", value)}
+
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o cliente" />
+              </SelectTrigger>
+              <SelectContent>
+                {
+                  clientes.map(cliente => (
+                    <SelectItem value={cliente.id} key={cliente.id}>{cliente.nome}</SelectItem>
+                  ))
+                }
+
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div className="flex justify-between items-center pt-4">

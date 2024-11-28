@@ -9,7 +9,9 @@ import {
   deleteDoc,
   arrayUnion,
   Timestamp,
-  runTransaction
+  runTransaction,
+  collection,
+  getDocs
 } from 'firebase/firestore';
 import { db, storage } from '@/db/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
@@ -49,24 +51,49 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { Cliente } from '@/interfaces/cliente';
 
 /**
  * Componente para exibir e editar os detalhes de um cheque.
  */
 const DetalhesCheque: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const navigate = useNavigate();
   const [cheque, setCheque] = useState<Cheque | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
-  const { currentUser } = useAuth(); // Obter o usuário atual
+  const { currentUser }: any = useAuth();
 
   /**
    * Busca os dados do cheque no Firestore.
    */
+
+  useEffect(() => {
+    if(currentUser.isClient) {
+      navigate('/')
+    }
+    const fetchClientes = async () => {
+
+      try {
+        const clientesCollectionRef = collection(db, 'clientes');
+        const clientesSnapshot = await getDocs(clientesCollectionRef);
+        const clientesList = await clientesSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Cliente[];
+        setClientes(clientesList);
+      } catch (error) {
+        console.error('Erro ao buscar cheques:', error);
+        toast.error('Ocorreu um erro ao buscar os cheques.');
+      }
+    };
+
+    fetchClientes();
+  }, []);
+
   useEffect(() => {
     const fetchCheque = async () => {
       if (!id) return;
@@ -118,7 +145,7 @@ const DetalhesCheque: React.FC = () => {
    * @returns URL do arquivo enviado.
    */
   const uploadAnexo = async (file: File): Promise<string> => {
-    if (!cheque ) return '';
+    if (!cheque) return '';
     const storageRefPath = ref(storage, `cheques/anexos/${id}/${file.name}`);
     const snapshot = await uploadBytes(storageRefPath, file);
     const downloadURL = await getDownloadURL(snapshot.ref);
@@ -133,18 +160,18 @@ const DetalhesCheque: React.FC = () => {
       console.log("Nenhum cheque fornecido.");
       return;
     }
-  
+
     setIsUpdating(true);
     console.log("Iniciando atualização do cheque...", { cheque });
-  
+
     try {
       let anexoUrl = cheque.anexoUrl;
       console.log("URL inicial do anexo:", anexoUrl);
-  
+
       // Verifica se um novo arquivo foi selecionado
       if (cheque.anexoFile) {
         console.log("Novo arquivo de anexo detectado:", cheque.anexoFile);
-  
+
         // Deleta o anexo anterior, se existir
         if (cheque.anexoUrl) {
           console.log("Deletando anexo anterior:", cheque.anexoUrl);
@@ -152,19 +179,19 @@ const DetalhesCheque: React.FC = () => {
           await deleteObject(previousAnexoRef);
           console.log("Anexo anterior deletado com sucesso.");
         }
-  
+
         // Faz o upload do novo anexo
         anexoUrl = await uploadAnexo(cheque.anexoFile);
         console.log("Novo anexo carregado com sucesso:", anexoUrl);
       }
-  
+
       // Atualiza o cheque no Firestore
       const chequeDocRef = doc(db, "cheques", id as string);
       console.log("Atualizando cheque no Firestore:", {
         ...cheque,
         anexoUrl,
       });
-  
+
       await updateDoc(chequeDocRef, {
         leitora: cheque.leitora,
         numeroCheque: cheque.numeroCheque,
@@ -174,6 +201,7 @@ const DetalhesCheque: React.FC = () => {
         motivoDevolucao: cheque.motivoDevolucao,
         numeroOperacao: cheque.numeroOperacao,
         anexoUrl,
+        clientId: cheque.clientId,
         quemRetirou: cheque.quemRetirou,
         dataRetirada: cheque.dataRetirada,
         regiao: cheque.regiao,
@@ -184,26 +212,26 @@ const DetalhesCheque: React.FC = () => {
         }),
       });
       console.log("Cheque atualizado com sucesso no Firestore.");
-  
+
       // Verifica se o cheque está associado a uma remessa
       if (cheque.remessaId) {
         console.log("Cheque associado a uma remessa. ID da remessa:", cheque.remessaId);
         const remessaDocRef = doc(db, "remessas", cheque.remessaId);
-  
+
         await runTransaction(db, async (transaction) => {
           const remessaDoc = await transaction.get(remessaDocRef);
           if (!remessaDoc.exists()) {
             throw new Error("Remessa não encontrada.");
           }
-  
+
           const remessaData = remessaDoc.data() as any;
           console.log("Dados da remessa antes da atualização:", remessaData);
-  
+
           const chequeIndex = remessaData.cheques.findIndex((c: Cheque) => c.id === id);
           if (chequeIndex === -1) {
             throw new Error("Cheque não encontrado na remessa.");
           }
-  
+
           remessaData.cheques[chequeIndex] = {
             ...remessaData.cheques[chequeIndex],
             leitora: cheque.leitora,
@@ -218,9 +246,9 @@ const DetalhesCheque: React.FC = () => {
             dataRetirada: cheque.dataRetirada,
             regiao: cheque.regiao,
           };
-  
+
           console.log("Cheque atualizado dentro da remessa:", remessaData.cheques[chequeIndex]);
-  
+
           if (!remessaData.log) {
             remessaData.log = [];
           }
@@ -229,12 +257,12 @@ const DetalhesCheque: React.FC = () => {
             message: `Cheque ${cheque.numeroCheque} atualizado`,
             user: currentUser?.displayName || currentUser?.email || "Usuário desconhecido",
           });
-  
+
           transaction.update(remessaDocRef, remessaData);
           console.log("Remessa atualizada com sucesso no Firestore.");
         });
       }
-  
+
       toast.success("Cheque atualizado com sucesso!");
       setIsSheetOpen(false);
       console.log("Processo concluído com sucesso.");
@@ -246,13 +274,13 @@ const DetalhesCheque: React.FC = () => {
       setIsUpdating(false);
     }
   };
-  
+
 
   /**
    * Função para excluir o cheque.
    */
   const handleDelete = async () => {
-    if (!cheque ) return;
+    if (!cheque) return;
     if (!window.confirm('Tem certeza de que deseja excluir este cheque?')) return;
 
     setIsDeleting(true);
@@ -368,7 +396,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.leitora}
                           onChange={(e) => formatarLeitora(e)}
                           placeholder="Leitora"
-                          
+
                         />
                       </div>
                       {/* Campo Número do Cheque */}
@@ -380,7 +408,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.numeroCheque}
                           onChange={(e) => handleChange('numeroCheque', e.target.value)}
                           placeholder="Número do Cheque"
-                          
+
                         />
                       </div>
                       {/* Campo Nome */}
@@ -395,7 +423,7 @@ const DetalhesCheque: React.FC = () => {
                             handleChange('nome', e.target.value);
                           }}
                           placeholder="Nome"
-                          
+
                         />
                       </div>
                       {/* Campo CPF/CNPJ */}
@@ -407,7 +435,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.cpf}
                           onChange={(e) => handleChange('cpf', e.target.value)}
                           placeholder="CPF/CNPJ"
-                          
+
                         />
                       </div>
                       {/* Campo Valor */}
@@ -419,7 +447,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.valor}
                           onChange={(e) => handleChange('valor', Number(e.target.value))}
                           placeholder="Valor"
-                          
+
                         />
                       </div>
                       {/* Campo Motivo da Devolução */}
@@ -472,7 +500,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.banco}
                           onChange={(e) => handleChange('banco', e.target.value)}
                           placeholder="Banco"
-                          
+
                         />
                       </div>
                       {/* Campo Vencimento */}
@@ -483,7 +511,7 @@ const DetalhesCheque: React.FC = () => {
                           id="vencimento"
                           value={cheque.vencimento}
                           onChange={(e) => handleChange('vencimento', e.target.value)}
-                          
+
                         />
                       </div>
                       {/* Campo Região */}
@@ -495,7 +523,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.regiao}
                           onChange={(e) => handleChange('regiao', e.target.value)}
                           placeholder="Região"
-                          
+
                         />
                       </div>
                       {/* Campo Local */}
@@ -507,7 +535,7 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.local}
                           onChange={(e) => handleChange('local', e.target.value)}
                           placeholder="Local"
-                          
+
                         />
                       </div>
                       {/* Campo Anexo do Cheque */}
@@ -558,6 +586,25 @@ const DetalhesCheque: React.FC = () => {
                           value={cheque.dataRetirada}
                           onChange={(e) => handleChange('dataRetirada', e.target.value)}
                         />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="clientId">Cliente *</Label>
+                        <Select
+                          onValueChange={(value) => handleChange("clientId", value)}
+
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o cliente" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {
+                              clientes.map(cliente => (
+                                <SelectItem value={cliente.id} key={cliente.id}>{cliente.nome}</SelectItem>
+                              ))
+                            }
+
+                          </SelectContent>
+                        </Select>
                       </div>
                       {/* Botões de ação */}
                       <div className="flex justify-end space-x-2 mt-4">

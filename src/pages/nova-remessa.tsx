@@ -41,10 +41,14 @@ const NovaRemessa: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedCheques, setSelectedCheques] = useState<Cheque[]>([]);
   const [rowSelection, setRowSelection] = useState({});
+
   const navigate = useNavigate();
-  const { currentUser } = useAuth()
+  const { currentUser }: any = useAuth(); // Obter o usuário atual
 
   useEffect(() => {
+    if (currentUser.isClient) {
+      navigate('/')
+    }
     const fetchCheques = async () => {
       setIsLoading(true);
       try {

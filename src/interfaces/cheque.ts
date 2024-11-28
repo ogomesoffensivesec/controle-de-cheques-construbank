@@ -21,6 +21,7 @@ export interface Cheque {
   remessaId?: string;
   createdAt?: Date;
   regiao: string;
+  clientId: string; 
   log?: Array<{
     timestamp: Timestamp;
     message: string;
