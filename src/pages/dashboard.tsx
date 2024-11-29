@@ -31,10 +31,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -54,6 +56,18 @@ import { Cheque } from "@/interfaces/cheque";
 import { Remessa } from "@/interfaces/remessa";
 import BlurFade from "@/components/ui/blur-fade";
 import { useAuth } from "@/contexts/auth-context";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+
+type CardType = {
+  card: {
+    title: string
+    icon: React.ReactNode
+    value: string | number
+    description: string
+  }
+}
+
 
 const DashboardHome: React.FC = () => {
   const [cheques, setCheques] = React.useState<Cheque[]>([]);
@@ -62,7 +76,8 @@ const DashboardHome: React.FC = () => {
   const [username, setUsername] = React.useState<string>("");
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [loading, setLoading] = React.useState<boolean>(false);
-  const { currentUser }: any = useAuth()
+  const { currentUser }: any = useAuth();
+
   // Função para buscar cheques e remessas do Firestore
   React.useEffect(() => {
     const fetchCheques = async () => {
@@ -80,13 +95,12 @@ const DashboardHome: React.FC = () => {
                 : new Date(data.createdAt || Date.now()),
           } as Cheque;
         });
-        if (
-          currentUser?.isClient
-        ) {
-          const filterCheques = chequesData.filter(cheque => cheque.clientId === currentUser.clientId)
-          console.log(filterCheques);
-          setCheques(filterCheques)
-          return
+        if (currentUser?.isClient) {
+          const filterCheques = chequesData.filter(
+            (cheque) => cheque.clientId === currentUser.clientId
+          );
+          setCheques(filterCheques);
+          return;
         }
         setCheques(chequesData);
       } catch (error) {
@@ -131,7 +145,7 @@ const DashboardHome: React.FC = () => {
     fetchCheques();
     fetchRemessas();
     getUser();
-  }, []);
+  }, [currentUser]);
 
   const getStatusColor = (local: string) => {
     switch (local.toLowerCase()) {
@@ -204,38 +218,213 @@ const DashboardHome: React.FC = () => {
     }
   };
 
+  const getDialogContent = (title: string) => {
+    switch (title) {
+      case "Cheques em Transporte":
+        return (
+          <div>
+            <Table>
+              <TableCaption>Lista de cheques em transporte</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Número do Cheque</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Banco</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Motivo Devolução</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cheques
+                  .filter(
+                    (cheque) => cheque.local.toLowerCase() === "transporte"
+                  )
+                  .map((cheque) => (
+                    <TableRow key={cheque.id}>
+                      <TableCell>{cheque.numeroCheque}</TableCell>
+                      <TableCell>{cheque.nome}</TableCell>
+                      <TableCell>{cheque.vencimento}</TableCell>
+                      <TableCell>{cheque.banco}</TableCell>
+                      <TableCell>{cheque.valor}</TableCell>
+                      <TableCell>{cheque.motivoDevolucao}</TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </div>
+        );
+      case "Cheques no Escritório":
+        return (
+          <div>
+            <Table>
+              <TableCaption>Lista de cheques no escritório</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Número do Cheque</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Banco</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Motivo Devolução</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cheques
+                  .filter(
+                    (cheque) => cheque.local.toLowerCase() === "escritório"
+                  )
+                  .map((cheque) => (
+                    <TableRow key={cheque.id}>
+                      <TableCell>{cheque.numeroCheque}</TableCell>
+                      <TableCell>{cheque.nome}</TableCell>
+                      <TableCell>{cheque.vencimento}</TableCell>
+                      <TableCell>{cheque.banco}</TableCell>
+                      <TableCell>{cheque.valor}</TableCell>
+                      <TableCell>{cheque.motivoDevolucao}</TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </div>
+        );
+      case "Total de Cheques":
+        return (
+          <div>
+            <Table>
+              <TableCaption>Lista de todos os cheques</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Número do Cheque</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Banco</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Motivo Devolução</TableHead>
+                  <TableHead>Local</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cheques.map((cheque) => (
+                  <TableRow key={cheque.id}>
+                    <TableCell>{cheque.numeroCheque}</TableCell>
+                    <TableCell>{cheque.nome}</TableCell>
+                    <TableCell>{cheque.vencimento}</TableCell>
+                    <TableCell>{cheque.banco}</TableCell>
+                    <TableCell>{cheque.valor}</TableCell>
+                    <TableCell>{cheque.motivoDevolucao}</TableCell>
+                    <TableCell>{cheque.local}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        );
+      case "Total de Remessas":
+        return (
+          <div>
+            <Table>
+              <TableCaption>Lista de remessas</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Protocolo</TableHead>
+                  <TableHead>Data Remessa</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Emitido Por</TableHead>
+                  <TableHead>Documento</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {remessas.map((remessa) => (
+                  <TableRow key={remessa.id}>
+                    <TableCell>{remessa.protocolo}</TableCell>
+                    <TableCell>{remessa.dataRemessa}</TableCell>
+                    <TableCell>{remessa.status}</TableCell>
+                    <TableCell>{remessa.emitidoPor}</TableCell>
+                    <TableCell>
+                      <a
+                        href={remessa.documentoPdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Ver Documento
+                      </a>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   const cards = [
     {
-      title: 'Total de Cheques',
+      title: "Total de Cheques",
       icon: <ClipboardList className="h-4 w-4 text-muted-foreground" />,
       value: cheques.length,
-      description: 'Total de cheques cadastrados',
+      description: "Total de cheques cadastrados",
     },
     {
-      title: 'Cheques no Escritório',
+      title: "Cheques no Escritório",
       icon: <Building className="h-4 w-4 text-muted-foreground" />,
-      value: cheques.filter(cheque => cheque.local.toLowerCase() === 'escritório').length,
-      description: 'Cheques no escritório',
+      value: cheques.filter(
+        (cheque) => cheque.local.toLowerCase() === "escritório"
+      ).length,
+      description: "Cheques no escritório",
     },
     {
-      title: 'Cheques em Transporte',
+      title: "Cheques em Transporte",
       icon: <Truck className="h-4 w-4 text-muted-foreground" />,
-      value: cheques.filter(cheque => cheque.local.toLowerCase() === 'transporte').length,
-      description: 'Cheques em transporte',
+      value: cheques.filter(
+        (cheque) => cheque.local.toLowerCase() === "transporte"
+      ).length,
+      description: "Cheques em transporte",
     },
-    ...(currentUser.isClient
+    ...(currentUser?.isClient
       ? []
       : [
-          {
-            title: 'Total de Remessas',
-            icon: <FileText className="h-4 w-4 text-muted-foreground" />,
-            value: remessas.length,
-            description: 'Total de remessas criadas',
-          },
-        ]),
+        {
+          title: "Total de Remessas",
+          icon: <FileText className="h-4 w-4 text-muted-foreground" />,
+          value: remessas.length,
+          description: "Total de remessas criadas",
+        },
+      ]),
   ];
-  
+
+  const CardWithDialog = ({ card }: CardType) => {
+    return (
+      <Dialog>
+        <DialogTrigger asChild>
+          <Card className="hover:shadow-md duration-300 cursor-pointer">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+              {card.icon}
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{card.value}</div>
+              <p className="text-xs text-muted-foreground">
+                {card.description}
+              </p>
+            </CardContent>
+          </Card>
+        </DialogTrigger>
+        <DialogContent size="6xl">
+          <DialogHeader>
+            <DialogTitle>{card.title}</DialogTitle>
+          </DialogHeader>
+        <ScrollArea className="h-[500px]">
+        {getDialogContent(card.title)}
+        </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     !isLoading && (
       <div className="flex-1 space-y-4 px-4 ">
@@ -268,21 +457,13 @@ const DashboardHome: React.FC = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {cards.map((card, index) => (
             <BlurFade delay={0.15 * index} inView key={card.description}>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                  {card.icon}
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{card.value}</div>
-                  <p className="text-xs text-muted-foreground">{card.description}</p>
-                </CardContent>
-              </Card>
+              <CardWithDialog card={card} />
             </BlurFade>
           ))}
         </div>
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <BlurFade delay={0.40} inView className="col-span-4">
+          <BlurFade delay={0.4} inView className="col-span-4">
             <Card className="col-span-4">
               <CardHeader>
                 <CardTitle>Cheques Cadastrados por Mês</CardTitle>
@@ -351,6 +532,7 @@ const DashboardHome: React.FC = () => {
             </Card>
           </BlurFade>
         </div>
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           <BlurFade className="col-span-4 " inView delay={0.8}>
             <Card className="col-span-4 ">
@@ -370,14 +552,11 @@ const DashboardHome: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {cheques
-                      .filter(cheque => cheque.createdAt)
-                      .filter(cheque => cheque.createdAt)
-                      .sort(
-                        (a, b) => {
-                          if (!a.createdAt || !b.createdAt) return 0;
-                          return b.createdAt.getTime() - a.createdAt.getTime();
-                        }
-                      )
+                      .filter((cheque) => cheque.createdAt)
+                      .sort((a, b) => {
+                        if (!a.createdAt || !b.createdAt) return 0;
+                        return b.createdAt.getTime() - a.createdAt.getTime();
+                      })
                       .slice(0, 5)
                       .map((cheque) => (
                         <TableRow key={cheque.id}>
@@ -392,7 +571,9 @@ const DashboardHome: React.FC = () => {
                             {cheque.local}
                           </TableCell>
                           <TableCell>
-                            {cheque.createdAt ? cheque.createdAt.toLocaleDateString("pt-BR") : 'N/A'}
+                            {cheque.createdAt
+                              ? cheque.createdAt.toLocaleDateString("pt-BR")
+                              : "N/A"}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -402,7 +583,6 @@ const DashboardHome: React.FC = () => {
             </Card>
           </BlurFade>
           <BlurFade className="col-span-3 " inView delay={0.8}>
-
             <Card className="col-span-3  h-[315px]">
               <CardHeader>
                 <CardTitle>Estatísticas Gerais</CardTitle>
@@ -447,7 +627,7 @@ const DashboardHome: React.FC = () => {
                       Cheques no Escritório
                     </span>
                   </div>
-                  <div className="flex items-center space-x-2">
+                 {!currentUser.isClient &&  <div className="flex items-center space-x-2">
                     <FileText className="h-6 w-6 text-purple-500" />
                     <span className="text-lg font-semibold">
                       {remessas.length}
@@ -455,12 +635,11 @@ const DashboardHome: React.FC = () => {
                     <span className="text-sm text-muted-foreground">
                       Remessas Totais
                     </span>
-                  </div>
+                  </div>}
                 </div>
               </CardContent>
             </Card>
           </BlurFade>
-
         </div>
       </div>
     )
