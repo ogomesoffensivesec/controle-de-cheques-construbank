@@ -5,7 +5,7 @@ import vercel from 'vite-plugin-vercel';
 
 export default defineConfig({
   plugins: [react(), vercel()],
-  base: '/',
+  base: '/cheques/',
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

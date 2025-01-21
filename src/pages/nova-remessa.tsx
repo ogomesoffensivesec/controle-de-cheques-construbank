@@ -1,15 +1,22 @@
-// src/pages/NovaRemessa.tsx
-
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { Cheque } from '@/interfaces/cheque';
-import { Remessa } from '@/interfaces/remessa';
-import { collection, getDocs, doc, updateDoc, addDoc, Timestamp, arrayUnion } from 'firebase/firestore';
-import { db } from '@/db/firebase';
-import { useNavigate } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useEffect, useState } from "react";
+import { Cheque } from "@/interfaces/cheque";
+import { Remessa } from "@/interfaces/remessa";
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  addDoc,
+  Timestamp,
+  arrayUnion,
+} from "firebase/firestore";
+import { db } from "@/db/firebase";
+import { useNavigate } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 import {
   ColumnDef,
   useReactTable,
@@ -18,8 +25,9 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   flexRender,
-} from '@tanstack/react-table';
-import { Button } from '@/components/ui/button';
+} from "@tanstack/react-table";
+
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableHeader,
@@ -27,14 +35,34 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { storage } from '@/db/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { useAuth } from '@/contexts/auth-context';
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from '@/components/ui/breadcrumb';
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+import { storage } from "@/db/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useAuth } from "@/contexts/auth-context";
+
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
+
+// Import your custom Pagination components
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const NovaRemessa: React.FC = () => {
   const [cheques, setCheques] = useState<Cheque[]>([]);
@@ -47,12 +75,13 @@ const NovaRemessa: React.FC = () => {
 
   useEffect(() => {
     if (currentUser.isClient) {
-      navigate('/')
+      navigate("/");
     }
+
     const fetchCheques = async () => {
       setIsLoading(true);
       try {
-        const chequesCollectionRef = collection(db, 'cheques');
+        const chequesCollectionRef = collection(db, "cheques");
         const chequesSnapshot = await getDocs(chequesCollectionRef);
         const chequesList = chequesSnapshot.docs
           .map((doc) => {
@@ -62,23 +91,23 @@ const NovaRemessa: React.FC = () => {
               id: doc.id,
             };
           })
-          .filter((cheque) => cheque.local === 'Escritório');
+          .filter((cheque) => cheque.local === "Escritório");
         setCheques(chequesList);
       } catch (error) {
-        console.error('Erro ao buscar cheques:', error);
-        toast.error('Ocorreu um erro ao buscar os cheques.');
+        console.error("Erro ao buscar cheques:", error);
+        toast.error("Ocorreu um erro ao buscar os cheques.");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchCheques();
-  }, []);
+  }, [currentUser, navigate]);
 
   // Configuração das colunas da tabela
   const columns: ColumnDef<Cheque>[] = [
     {
-      id: 'select',
+      id: "select",
       header: ({ table }) => (
         <Checkbox
           checked={table.getIsAllPageRowsSelected()}
@@ -97,33 +126,33 @@ const NovaRemessa: React.FC = () => {
       enableHiding: false,
     },
     {
-      accessorKey: 'numeroCheque',
-      header: 'Número do Cheque',
+      accessorKey: "numeroCheque",
+      header: "Número do Cheque",
     },
     {
-      accessorKey: 'banco',
-      header: 'Banco',
+      accessorKey: "banco",
+      header: "Banco",
     },
     {
-      accessorKey: 'vencimento',
-      header: 'Vencimento',
+      accessorKey: "vencimento",
+      header: "Vencimento",
       cell: ({ row }) => {
-        const vencimento = row.getValue<string>('vencimento');
-        return new Date(vencimento).toLocaleDateString('pt-BR');
+        const vencimento = row.getValue<string>("vencimento");
+        return new Date(vencimento).toLocaleDateString("pt-BR");
       },
     },
     {
-      accessorKey: 'nome',
-      header: 'Nome',
+      accessorKey: "nome",
+      header: "Nome",
     },
     {
-      accessorKey: 'valor',
+      accessorKey: "valor",
       header: () => <div className="text-right">Valor</div>,
       cell: ({ row }) => {
-        const valor = row.getValue<number>('valor');
-        const formatted = valor.toLocaleString('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
+        const valor = row.getValue<number>("valor");
+        const formatted = valor.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
         });
         return <div className="text-right font-medium">{formatted}</div>;
       },
@@ -141,19 +170,19 @@ const NovaRemessa: React.FC = () => {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    // Importante: habilitar o getPaginationRowModel
     getPaginationRowModel: getPaginationRowModel(),
   });
 
   // Atualiza selectedCheques sempre que rowSelection mudar
   useEffect(() => {
-
     const rows = table.getSelectedRowModel().rows.map((row) => row.original);
     setSelectedCheques(rows);
   }, [rowSelection, table]);
 
   // Função para gerar o protocolo
   const gerarProtocolo = (): string => {
-    const datePart = new Date().toLocaleDateString('pt-BR').replace(/\//g, '');
+    const datePart = new Date().toLocaleDateString("pt-BR").replace(/\//g, "");
     const randomPart = Math.floor(1000 + Math.random() * 9000).toString();
     return `${datePart}${randomPart}`;
   };
@@ -164,13 +193,13 @@ const NovaRemessa: React.FC = () => {
 
     // Título
     doc.setFontSize(18);
-    doc.text('Remessa de Cheques', 14, 22);
+    doc.text("Remessa de Cheques", 14, 22);
 
     // Informações da remessa
     doc.setFontSize(12);
     doc.text(`Protocolo: ${remessa.protocolo}`, 14, 32);
     doc.text(
-      `Data da Remessa: ${new Date(remessa.dataRemessa).toLocaleDateString('pt-BR')}`,
+      `Data da Remessa: ${new Date(remessa.dataRemessa).toLocaleDateString("pt-BR")}`,
       14,
       38
     );
@@ -181,62 +210,68 @@ const NovaRemessa: React.FC = () => {
       index + 1,
       cheque.numeroCheque,
       cheque.banco,
-      new Date(cheque.vencimento).toLocaleDateString('pt-BR'),
+      new Date(cheque.vencimento).toLocaleDateString("pt-BR"),
       cheque.nome,
-      cheque.valor.toLocaleString('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
+      cheque.valor.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
       }),
     ]);
 
     autoTable(doc, {
       startY: 50,
-      head: [['#', 'Número do Cheque', 'Banco', 'Vencimento', 'Nome', 'Valor']],
+      head: [["#", "Número do Cheque", "Banco", "Vencimento", "Nome", "Valor"]],
       body: tableBody,
     });
 
     // Campo para assinatura
-    doc.text('Assinatura de Recebimento:', 14, doc.lastAutoTable.finalY + 30);
+    doc.text("Assinatura de Recebimento:", 14, doc.lastAutoTable.finalY + 30);
     doc.line(14, doc.lastAutoTable.finalY + 45, 196, doc.lastAutoTable.finalY + 45);
 
     // Gerar o PDF em Blob
-    const pdfBlob = doc.output('blob');
+    const pdfBlob = doc.output("blob");
 
     // Upload do PDF para o Firebase Storage
-    const storageRefPath = ref(storage, `remessas/${remessaId}/Remessa_${remessa.protocolo}.pdf`);
+    const storageRefPath = ref(
+      storage,
+      `remessas/${remessaId}/Remessa_${remessa.protocolo}.pdf`
+    );
     await uploadBytes(storageRefPath, pdfBlob);
 
     // Obter a URL de download
     const downloadURL = await getDownloadURL(storageRefPath);
-
     return downloadURL;
   };
 
   // Função para iniciar a remessa
   const handleIniciarRemessa = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
 
     if (selectedCheques.length === 0) {
-      toast.error('Selecione pelo menos um cheque para iniciar a remessa.');
+      toast.error("Selecione pelo menos um cheque para iniciar a remessa.");
+      setIsLoading(false);
       return;
     }
 
     try {
       const protocolo = gerarProtocolo();
-      const remessasCollectionRef = collection(db, 'remessas');
+      const remessasCollectionRef = collection(db, "remessas");
       const remessaData: Remessa = {
         protocolo,
         dataRemessa: new Date().toISOString(),
-        emitidoPor: currentUser?.displayName as string, // Substitua pelo nome do usuário logado
+        emitidoPor: currentUser?.displayName as string,
         cheques: selectedCheques,
-        status: 'Transporte',
+        status: "Transporte",
         log: [
           {
             timestamp: Timestamp.now(),
-            message: 'Remessa criada',
-            user: currentUser?.displayName || currentUser?.email || 'Usuário desconhecido',
+            message: "Remessa criada",
+            user:
+              currentUser?.displayName ||
+              currentUser?.email ||
+              "Usuário desconhecido",
           },
-        ], // Log inicial da remessa
+        ],
       };
 
       // Adicionar a remessa ao Firestore
@@ -250,27 +285,30 @@ const NovaRemessa: React.FC = () => {
         documentoPdfUrl: pdfUrl,
       });
 
-      // Atualizar o status dos cheques para "Transporte", associar à remessa e atualizar o log
+      // Atualizar o status dos cheques
       for (const cheque of selectedCheques) {
-        const chequeDocRef = doc(db, 'cheques', cheque.id!);
+        const chequeDocRef = doc(db, "cheques", cheque.id!);
         await updateDoc(chequeDocRef, {
-          local: 'Transporte',
+          local: "Transporte",
           remessaId: remessaDocRef.id,
           log: arrayUnion({
             timestamp: Timestamp.now(),
             message: `Cheque incluído na remessa ${remessaData.protocolo}`,
-            user: currentUser?.displayName || currentUser?.email || 'Usuário desconhecido',
+            user:
+              currentUser?.displayName ||
+              currentUser?.email ||
+              "Usuário desconhecido",
           }),
         });
       }
 
-      toast.success('Remessa iniciada com sucesso!');
-      navigate('/remessas'); // Redireciona para a lista de remessas
+      toast.success("Remessa iniciada com sucesso!");
+      navigate("/remessas");
     } catch (error) {
-      console.error('Erro ao iniciar remessa:', error);
-      toast.error('Ocorreu um erro ao iniciar a remessa.');
+      console.error("Erro ao iniciar remessa:", error);
+      toast.error("Ocorreu um erro ao iniciar a remessa.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   };
 
@@ -294,8 +332,9 @@ const NovaRemessa: React.FC = () => {
       </Breadcrumb>
 
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold ">Iniciar Nova Remessa</h1>
+        <h1 className="text-2xl font-bold">Iniciar Nova Remessa</h1>
       </div>
+
       {isLoading ? (
         <p>Carregando...</p>
       ) : (
@@ -315,9 +354,9 @@ const NovaRemessa: React.FC = () => {
                             {header.isPlaceholder
                               ? null
                               : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
                           </TableHead>
                         ))}
                       </TableRow>
@@ -328,9 +367,9 @@ const NovaRemessa: React.FC = () => {
                       table.getRowModel().rows.map((row) => (
                         <TableRow
                           key={row.id}
-                          data-state={row.getIsSelected() && 'selected'}
+                          data-state={row.getIsSelected() && "selected"}
                           onClick={() => row.toggleSelected()}
-                          className={row.getIsSelected() ? 'bg-gray-100' : ''}
+                          className={row.getIsSelected() ? "bg-gray-100" : ""}
                         >
                           {row.getVisibleCells().map((cell) => (
                             <TableCell key={cell.id}>
@@ -355,11 +394,51 @@ const NovaRemessa: React.FC = () => {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Exemplo de paginação usando seu componente Pagination */}
+              <div className="mt-4 flex justify-center">
+                <Pagination>
+                  <PaginationContent>
+                    {/* Botão para a página anterior */}
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={() => table.previousPage()}
+                      />
+                    </PaginationItem>
+
+                    {/* Exemplo simples de todas as páginas (cuidado se houver muitas páginas) */}
+                    {Array.from({ length: table.getPageCount() }).map((_, pageIndex) => {
+                      return (
+                        <PaginationItem key={pageIndex}>
+                          <PaginationLink
+                            href="#"
+                            onClick={() => table.setPageIndex(pageIndex)}
+                          >
+                            {pageIndex + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+
+                    {/* Ou para “pular” páginas, use <PaginationEllipsis /> quando necessário */}
+
+                    {/* Botão para a próxima página */}
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={() => table.nextPage()}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+
               <div className="flex justify-end mt-4">
                 <Button onClick={handleIniciarRemessa} disabled={isLoading}>
-                  {
-                    isLoading ? "Iniciando..." : `Iniciar Remessa com ${selectedCheques.length} Cheque(s)`
-                  }
+                  {isLoading
+                    ? "Iniciando..."
+                    : `Iniciar Remessa com ${selectedCheques.length} Cheque(s)`}
                 </Button>
               </div>
             </div>

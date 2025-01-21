@@ -50,6 +50,7 @@ const Remessas: React.FC = () => {
           ...doc.data(),
         })) as Remessa[];
         setRemessas(remessasList);
+
       } catch (error) {
         console.error('Erro ao buscar remessas:', error);
         toast.error('Ocorreu um erro ao buscar as remessas.');

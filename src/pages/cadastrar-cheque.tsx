@@ -32,7 +32,6 @@ import {
 } from '@/components/ui/tooltip';
 import { Cliente } from '@/interfaces/cliente';
 
-// Componente de Paginação
 const Pagination: React.FC<{
   currentPage: number;
   totalPages: number;

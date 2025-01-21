@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Remessa } from '@/interfaces/remessa';
-import { arrayUnion, doc, getDoc, Timestamp, updateDoc, collection, addDoc } from 'firebase/firestore';
+import { arrayUnion, doc, getDoc, Timestamp, updateDoc, collection, addDoc, deleteDoc } from 'firebase/firestore';
 import { db, storage } from '@/db/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toast, ToastContainer } from 'react-toastify';
@@ -51,7 +51,7 @@ const DetalhesRemessa: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [documentoAssinadoFile, setDocumentoAssinadoFile] = useState<File | null>(null);
   const [recebidoPor, setRecebidoPor] = useState<string>('');
-
+  const [isDeleting, setIsDeleting] = useState(false);
   // Estados para adicionar novos cheques
   const [cheques, setCheques] = useState<Cheque[]>([]);
   const [chequeAtual, setChequeAtual] = useState<Cheque>({
@@ -355,6 +355,20 @@ const DetalhesRemessa: React.FC = () => {
     }
   };
 
+  const handleDeleteRemessa = async (remessaId: string) => {
+    try {
+      setIsDeleting(true)
+      const remessaRef = doc(db, 'remessas', remessaId);
+      await deleteDoc(remessaRef);
+      toast.success('Remessa excluída com sucesso!');
+      navigate('/remessas')
+    } catch (error) {
+      toast.error("Erro ao deletar remessa")
+      console.error(error);
+    } finally {
+      setIsDeleting(false)
+    }
+  }
   return (
     <div className="w-full min-h-screen p-4 space-y-6">
       <ToastContainer />
@@ -364,9 +378,16 @@ const DetalhesRemessa: React.FC = () => {
         <div>
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold dark:text-white">Detalhes da Remessa</h1>
-            <Button onClick={() => navigate('/remessas')}>
-              Voltar para Remessas
-            </Button>
+            <div className='flex gap-2'>
+              <Button onClick={() => navigate('/remessas')}>
+                Voltar para Remessas
+              </Button>
+              <Button onClick={() => handleDeleteRemessa(remessa.id || "")} variant='destructive' disabled={isDeleting}>
+                {
+                  !isDeleting ? "Excuir remessa" : "Excluindo remessa..."
+                }
+              </Button>
+            </div>
           </div>
           <div className="mt-4 space-y-2">
             <p>

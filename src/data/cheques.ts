@@ -1,4 +1,4 @@
-import { ClassificacaoMotivo } from "@/interfaces/tipos-devolucao";
+import { ClassificacaoMotivo } from "@/lib/tipos-devolucao";
 
 export const classificacoes: ClassificacaoMotivo[] = [
   {
